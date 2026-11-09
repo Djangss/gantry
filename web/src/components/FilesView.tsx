@@ -1,15 +1,19 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router";
 import { api, errorText, send } from "@/api";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import MarkdownEditor from "@/components/MarkdownEditor";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { emptyDrawing } from "@/lib/drawing";
 import { saveFile } from "@/lib/files";
 import { noteTemplate, slugify } from "@/lib/frontmatter";
 import { meQuery } from "@/lib/me";
 import { cn } from "@/lib/utils";
 import type { TreeEntry } from "@/types";
+
+const DrawingEditor = lazy(() => import("@/components/DrawingEditor"));
 
 const editable = (p: string) => p.endsWith(".md") || p.endsWith(".excalidraw");
 
@@ -34,7 +38,7 @@ export default function FilesView() {
     if (!name) return;
     const p = kind === "note" ? `notes/${slugify(name)}.md` : `drawings/${slugify(name)}.excalidraw`;
     const links = link ? [link] : [];
-    const content = kind === "note" ? noteTemplate(name, links) : JSON.stringify({ type: "excalidraw", version: 2, source: "gantry", elements: [], appState: {}, files: {}, links }, null, 2);
+    const content = kind === "note" ? noteTemplate(name, links) : emptyDrawing(links);
     try {
       const r = await saveFile(owner, repo, p, content, "", `notes: add ${p}`);
       if (!r.ok) return setError(`${p} already exists. Pick another name.`);
@@ -108,6 +112,12 @@ export default function FilesView() {
       <section className="min-h-0 overflow-hidden">
         {!path ? (
           <p className="p-6 text-muted-foreground">Pick a file on the left.</p>
+        ) : path.endsWith(".excalidraw") ? (
+          <ErrorBoundary key={path}>
+            <Suspense fallback={<Skeleton className="m-4 h-96" />}>
+              <DrawingEditor owner={owner} repo={repo} path={path} message={message} />
+            </Suspense>
+          </ErrorBoundary>
         ) : (
           <MarkdownEditor key={path} owner={owner} repo={repo} path={path} message={message} />
         )}
