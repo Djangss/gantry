@@ -44,10 +44,15 @@ storage for drawings.
   - issues/PRs: REST;
   - repo docs: `docs/` in each repo (contents API);
   - notes and drawings: one private repo, `NOTES_REPO`.
-- Stack: Go + Gin, `google/go-github` (REST), `shurcooL/githubv4` (GraphQL),
-  `gorilla/securecookie`, `log/slog`. Frontend: React + Vite + TypeScript,
-  TanStack Query, React Router, `dnd-kit`, CodeMirror 6, `react-markdown`,
-  `@excalidraw/excalidraw`.
+- Stack: Go stdlib only — `net/http` ServeMux patterns, direct REST and GraphQL
+  calls (about 10 endpoints, which doesn't justify two SDKs), AES-GCM cookie
+  sealing, `log/slog`. (Revised 2026-11-09: Gin, go-github, githubv4 and
+  securecookie dropped.) Frontend: React + Vite + TypeScript, Tailwind CSS v4,
+  shadcn/ui (Radix), TanStack Query, React Router, `dnd-kit`, CodeMirror 6,
+  `react-markdown`, `@excalidraw/excalidraw`, sonner.
+- UI tooling: frontend-design skill for direction (`docs/design.md`), shadcn
+  MCP, Impeccable audits, Vercel Web Interface Guidelines, Playwright
+  screenshots. Accessibility work is out of scope for v1.
 
 ## 4. Auth and sessions
 
@@ -81,8 +86,9 @@ The server refuses to start if any required var is missing.
 
 - `internal/auth` — OAuth flow, cookie session, allowlist, auth middleware,
   CSRF header check.
-- `internal/gh` — thin client over go-github and githubv4. Holds the ETag cache
-  and caches each project's Status field ID and option IDs.
+- `internal/gh` — thin `net/http` client for REST and GraphQL, with the ETag
+  cache. The board response includes the Status field ID, so the SPA sends it
+  back on moves and the server keeps no per-project state.
 - `internal/notes` — in-memory links index (issue ref → note paths).
 - `internal/api` — Gin handlers and the error mapping.
 
@@ -90,10 +96,11 @@ The server refuses to start if any required var is missing.
 
 | Method | Path | Does |
 |--------|------|------|
-| GET | `/api/me` | current user |
+| GET | `/api/me` | `{login, notesRepo}` |
+| GET | `/api/repos` | my repos (sidebar docs list) |
 | GET | `/api/projects` | my Projects v2 boards |
-| GET | `/api/projects/{id}/items` | cards + Status field and its options |
-| PATCH | `/api/projects/{id}/items/{itemId}` | body `{status}`; moves a card |
+| GET | `/api/projects/{id}/items` | cards + Status field ID and its options |
+| PATCH | `/api/projects/{id}/items/{itemId}` | body `{fieldId, optionId}`; moves a card |
 | GET | `/api/repos/{owner}/{repo}/issues/{n}` | issue or PR + comments; PRs add review state and checks |
 | POST | `/api/repos/{owner}/{repo}/issues/{n}/comments` | body `{body}` |
 | GET | `/api/repos/{owner}/{repo}/tree?path=docs` | file tree under a path |
@@ -159,8 +166,9 @@ Link refs use the form `owner/repo#number`.
 
 ### Links index
 
-1. At startup Go lists `notes/` and `drawings/` in `NOTES_REPO`, fetches each
-   file (through the ETag cache), and parses `links`.
+1. On the first links lookup (a token only exists once someone signs in), Go
+   lists `notes/` and `drawings/` in `NOTES_REPO`, fetches each file (through
+   the ETag cache, 8 at a time), and parses `links`.
 2. A save through Gantry updates the index for that file.
 3. `shortcut:` a full scan on startup. Fine up to a few hundred files. Switch to
    a committed `index.json` if startup gets slow.
@@ -241,7 +249,10 @@ compose.yaml
 README with a pitch, screenshots, a GIF of a card drag, the architecture diagram,
 and "run locally" steps (a dev OAuth App with callback `http://localhost:8080/auth/callback`).
 
-## 15. Open items
+## 15. Decisions
 
-- Subdomain/domain to use on the VPS.
-- Notes repo name (default `Djangss/notes`; create it as private).
+- Domain: `gantry.mijotez.me`. The container joins Docker network
+  `norish_default`, and the existing Caddy proxies `gantry:8080`.
+- Notes repo: `Djangss/notes`, private.
+- The card-drag GIF is optional and recorded by hand. README screenshots come
+  from the Playwright screenshot harness.
