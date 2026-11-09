@@ -1,6 +1,7 @@
 import { api, ApiError, send } from "@/api";
 import type { FileData } from "@/types";
 
+
 export const contentsUrl = (owner: string, repo: string, path: string) =>
   `/api/repos/${owner}/${repo}/contents/${path.split("/").map(encodeURIComponent).join("/")}`;
 
@@ -23,3 +24,12 @@ export async function overwrite(owner: string, repo: string, path: string, conte
 
 // After a save, drop the local edit only if nothing was typed while the save was in flight.
 export const afterSave = (edited: string | null, saved: string) => (edited === saved ? null : edited);
+
+// No background refetches: a refetch while editing would move the sha and let a save overwrite a remote change.
+export const fileQueryOptions = (owner: string, repo: string, path: string) => ({
+  queryKey: ["file", `${owner}/${repo}/${path}`],
+  queryFn: () => api<FileData>(contentsUrl(owner, repo, path)),
+  staleTime: Infinity,
+  refetchOnWindowFocus: false,
+  refetchOnReconnect: false,
+});

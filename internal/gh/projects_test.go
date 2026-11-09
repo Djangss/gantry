@@ -82,3 +82,13 @@ func TestMoveItem(t *testing.T) {
 		t.Fatalf("vars %v", v)
 	}
 }
+
+func TestBoardPartialErrorsKeepReadableItems(t *testing.T) {
+	c := fake(t, map[string]http.HandlerFunc{"POST /graphql": func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, strings.Replace(boardJSON, `{"data":`, `{"errors":[{"type":"FORBIDDEN","message":"org restricts OAuth apps"}],"data":`, 1))
+	}})
+	b, err := c.Board(ctx, "tok", "P1")
+	if err != nil || len(b.Items) != 2 {
+		t.Fatalf("want readable items despite partial errors, got %v %+v", err, b)
+	}
+}

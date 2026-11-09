@@ -5,7 +5,7 @@ import { errorText } from "@/api";
 import FileBar from "@/components/FileBar";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { parseDrawing, withLinks } from "@/lib/drawing";
+import { drawingMountKey, parseDrawing, sceneEdit, withLinks } from "@/lib/drawing";
 import { useEditableFile } from "@/lib/useEditableFile";
 
 type Props = { owner: string; repo: string; path: string; message: string };
@@ -14,12 +14,18 @@ const linkList = (s: string) => s.split(",").map((x) => x.trim()).filter(Boolean
 
 export default function DrawingEditor({ owner, repo, path, message }: Props) {
   const f = useEditableFile(owner, repo, path, message);
-  const mountKey = `${f.generation}:${f.file.data?.sha ?? ""}`;
+  const mountKey = drawingMountKey(f.generation, !!f.file.data);
   // Excalidraw reads initialData once per mount, so re-parse only when the mount key changes.
   const initial = useMemo(() => parseDrawing(f.value), [mountKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const [links, setLinks] = useState("");
   const linksRef = useRef("");
   const base = useRef<{ key: string; json: string } | null>(null);
+
+  // After a save the file holds our own serialization, so it becomes the new "nothing to save" baseline.
+  const savedSha = f.file.data?.sha;
+  useEffect(() => {
+    if (base.current && f.file.data) base.current.json = f.file.data.content;
+  }, [savedSha]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const l = initial?.links.join(", ") ?? "";
@@ -39,7 +45,9 @@ export default function DrawingEditor({ owner, repo, path, message }: Props) {
       base.current = { key: mountKey, json };
       return;
     }
-    if (json !== base.current.json) f.setContent(json);
+    const next = sceneEdit(json, base.current.json);
+    if (next === null) f.resetContent();
+    else f.setContent(next);
   }
 
   function onLinks(v: string) {

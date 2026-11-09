@@ -1,18 +1,14 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { api, errorText } from "@/api";
+import { errorText } from "@/api";
 import type { FileData } from "@/types";
 import { clearDraft, loadDraft, saveDraft } from "./drafts";
-import { afterSave, contentsUrl, overwrite, saveFile } from "./files";
+import { afterSave, fileQueryOptions, overwrite, saveFile } from "./files";
 
 export function useEditableFile(owner: string, repo: string, path: string, message: string) {
   const key = `${owner}/${repo}/${path}`;
   const qc = useQueryClient();
-  const file = useQuery({
-    queryKey: ["file", key],
-    queryFn: () => api<FileData>(contentsUrl(owner, repo, path)),
-    refetchOnWindowFocus: false,
-  });
+  const file = useQuery(fileQueryOptions(owner, repo, path));
   const [edited, setEdited] = useState<string | null>(null);
   const [sha, setSha] = useState("");
   const [status, setStatus] = useState("");
@@ -122,8 +118,12 @@ export function useEditableFile(owner: string, repo: string, path: string, messa
     setEdited(v);
     setStatus("");
   };
+  const resetContent = () => {
+    setEdited(null);
+    setStatus("");
+  };
 
-  return { file, value, setContent, dirty, status, conflict, draftOffer, generation, save, overwriteMine, reloadTheirs, restoreDraft, discardDraft };
+  return { file, value, setContent, resetContent, dirty, status, conflict, draftOffer, generation, save, overwriteMine, reloadTheirs, restoreDraft, discardDraft };
 }
 
 export type EditableFile = ReturnType<typeof useEditableFile>;

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/Djangss/gantry/internal/api"
 	"github.com/Djangss/gantry/web"
@@ -26,7 +27,8 @@ func main() {
 		os.Exit(1)
 	}
 	slog.Info("listening", "port", cfg.Port)
-	if err := http.ListenAndServe(":"+cfg.Port, h); err != nil {
+	srv := &http.Server{Addr: ":" + cfg.Port, Handler: h, ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 2 * time.Minute}
+	if err := srv.ListenAndServe(); err != nil {
 		slog.Error("server", "err", err)
 		os.Exit(1)
 	}

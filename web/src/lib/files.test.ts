@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from "vitest";
-import { afterSave, contentsUrl, overwrite, saveFile } from "./files";
+import { afterSave, contentsUrl, fileQueryOptions, overwrite, saveFile } from "./files";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -40,4 +40,13 @@ test("afterSave keeps edits typed during the save", () => {
   expect(afterSave("saved text", "saved text")).toBeNull();
   expect(afterSave("saved text plus more", "saved text")).toBe("saved text plus more");
   expect(afterSave(null, "saved text")).toBeNull();
+});
+
+test("an open file never refetches on its own, so its sha only moves on save or reload", () => {
+  expect(fileQueryOptions("o", "r", "a.md")).toMatchObject({
+    queryKey: ["file", "o/r/a.md"],
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
 });

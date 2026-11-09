@@ -58,5 +58,14 @@ func NewServer(cfg Config, spa fs.FS) (http.Handler, error) {
 	mux.Handle("POST /auth/logout", auth.CSRF(http.HandlerFunc(a.Logout)))
 	mux.Handle("/api/", a.Require(auth.CSRF(api)))
 	mux.Handle("/", spaHandler(spa))
-	return mux, nil
+	return noFraming(mux), nil
+}
+
+// noFraming blocks clickjacking of actions like drag-to-move or "Overwrite with mine".
+func noFraming(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Content-Security-Policy", "frame-ancestors 'none'")
+		next.ServeHTTP(w, r)
+	})
 }

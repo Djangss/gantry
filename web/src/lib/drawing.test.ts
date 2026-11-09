@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { emptyDrawing, parseDrawing, withLinks } from "./drawing";
+import { drawingMountKey, emptyDrawing, parseDrawing, sceneEdit, withLinks } from "./drawing";
 
 test("parseDrawing refuses invalid JSON instead of returning an empty canvas", () => {
   expect(parseDrawing("not json")).toBeNull();
@@ -7,8 +7,23 @@ test("parseDrawing refuses invalid JSON instead of returning an empty canvas", (
   expect(parseDrawing("[1,2]")).toBeNull();
 });
 
-test("parseDrawing defaults missing links and elements", () => {
-  expect(parseDrawing('{"type":"excalidraw"}')).toMatchObject({ elements: [], links: [] });
+test("parseDrawing refuses JSON without an elements array", () => {
+  expect(parseDrawing('{"type":"excalidraw"}')).toBeNull();
+  expect(parseDrawing('{"elements":"oops"}')).toBeNull();
+});
+
+test("parseDrawing defaults missing links", () => {
+  expect(parseDrawing('{"elements":[]}')).toMatchObject({ elements: [], links: [] });
+});
+
+test("sceneEdit clears the edit when the scene returns to the loaded state", () => {
+  expect(sceneEdit("base", "base")).toBeNull();
+  expect(sceneEdit("changed", "base")).toBe("changed");
+});
+
+test("drawingMountKey ignores saves and changes only on load, reload or restore", () => {
+  expect(drawingMountKey(0, false)).not.toBe(drawingMountKey(0, true));
+  expect(drawingMountKey(0, true)).not.toBe(drawingMountKey(1, true));
 });
 
 test("withLinks sets links and keeps elements", () => {

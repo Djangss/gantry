@@ -212,3 +212,17 @@ func TestRESTUsesETagCache(t *testing.T) {
 		t.Fatalf("If-None-Match sent: %q", inm)
 	}
 }
+
+func TestPutContentsEscapesPath(t *testing.T) {
+	var got string
+	c := fake(t, map[string]http.HandlerFunc{"PUT /repos/o/r/contents/": func(w http.ResponseWriter, r *http.Request) {
+		got = r.URL.Path
+		fmt.Fprint(w, `{"content":{"sha":"s2"}}`)
+	}})
+	if _, err := c.PutContents(ctx, "tok", "o", "r", "docs/C#.md", "x", "s1", "m"); err != nil {
+		t.Fatal(err)
+	}
+	if got != "/repos/o/r/contents/docs/C#.md" {
+		t.Fatalf("server saw path %q", got)
+	}
+}

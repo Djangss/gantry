@@ -152,3 +152,11 @@ func TestLinksRejectsBadRef(t *testing.T) {
 		t.Fatalf("got %d", w.Code)
 	}
 }
+
+func TestFrameHeaders(t *testing.T) {
+	h, _ := testServer(t, nil)
+	w := call(h, nil, "GET", "/", "")
+	if w.Header().Get("X-Frame-Options") != "DENY" || !strings.Contains(w.Header().Get("Content-Security-Policy"), "frame-ancestors 'none'") {
+		t.Fatalf("headers %v", w.Header())
+	}
+}

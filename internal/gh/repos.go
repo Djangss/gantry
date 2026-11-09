@@ -280,11 +280,12 @@ func (c *Client) PutContents(ctx context.Context, token, owner, repo, path, cont
 	}
 	opts := &github.RepositoryContentFileOptions{Message: github.Ptr(message), Content: []byte(content)}
 	var res *github.RepositoryContentResponse
+	escaped := escapePath(path) // go-github escapes GetContents paths but not CreateFile/UpdateFile
 	if sha == "" {
-		res, _, err = g.Repositories.CreateFile(ctx, owner, repo, path, opts)
+		res, _, err = g.Repositories.CreateFile(ctx, owner, repo, escaped, opts)
 	} else {
 		opts.SHA = github.Ptr(sha)
-		res, _, err = g.Repositories.UpdateFile(ctx, owner, repo, path, opts)
+		res, _, err = g.Repositories.UpdateFile(ctx, owner, repo, escaped, opts)
 	}
 	if err != nil {
 		e := wrap(err)

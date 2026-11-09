@@ -3,6 +3,7 @@ package gh
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 )
 
 type Project struct {
@@ -48,7 +49,10 @@ func (c *Client) graphql(ctx context.Context, token, query string, vars map[stri
 	if err := c.do(ctx, token, "POST", "/graphql", "", map[string]any{"query": query, "variables": vars}, &resp); err != nil {
 		return err
 	}
-	if len(resp.Errors) > 0 {
+	// GitHub returns partial data with errors for items the token cannot see; keep the readable part.
+	if len(resp.Errors) > 0 && len(resp.Data) > 0 && string(resp.Data) != "null" {
+		slog.Warn("graphql partial errors", "first", resp.Errors[0].Message, "count", len(resp.Errors))
+	} else if len(resp.Errors) > 0 {
 		e := resp.Errors[0]
 		status := map[string]int{"NOT_FOUND": 404, "FORBIDDEN": 403, "RATE_LIMITED": 429}[e.Type]
 		if status == 0 {
