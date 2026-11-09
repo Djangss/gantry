@@ -44,10 +44,9 @@ storage for drawings.
   - issues/PRs: REST;
   - repo docs: `docs/` in each repo (contents API);
   - notes and drawings: one private repo, `NOTES_REPO`.
-- Stack: Go stdlib only — `net/http` ServeMux patterns, direct REST and GraphQL
-  calls (about 10 endpoints, which doesn't justify two SDKs), AES-GCM cookie
-  sealing, `log/slog`. (Revised 2026-11-09: Gin, go-github, githubv4 and
-  securecookie dropped.) Frontend: React + Vite + TypeScript, Tailwind CSS v4,
+- Stack: Go `net/http` ServeMux patterns, `google/go-github` v93 for REST
+  (owner decision 2026-11-09), raw GraphQL for Projects v2, AES-GCM cookie
+  sealing, `log/slog`. Gin, githubv4 and securecookie were dropped. Frontend: React + Vite + TypeScript, Tailwind CSS v4,
   shadcn/ui (Radix), TanStack Query, React Router, `dnd-kit`, CodeMirror 6,
   `react-markdown`, `@excalidraw/excalidraw`, sonner.
 - UI tooling: frontend-design skill for direction (`docs/design.md`), shadcn
@@ -86,8 +85,8 @@ The server refuses to start if any required var is missing.
 
 - `internal/auth` — OAuth flow, cookie session, allowlist, auth middleware,
   CSRF header check.
-- `internal/gh` — thin `net/http` client for REST and GraphQL, with the ETag
-  cache. The board response includes the Status field ID, so the SPA sends it
+- `internal/gh` — go-github for REST plus a small raw GraphQL client, both
+  sharing one `http.Client` with the ETag cache. The board response includes the Status field ID, so the SPA sends it
   back on moves and the server keeps no per-project state.
 - `internal/notes` — in-memory links index (issue ref → note paths).
 - `internal/api` — Gin handlers and the error mapping.
@@ -246,7 +245,7 @@ compose.yaml
 
 ## 14. Portfolio
 
-README with a pitch, screenshots, a GIF of a card drag, the architecture diagram,
+README with a pitch, screenshots, the draw.io architecture diagram,
 and "run locally" steps (a dev OAuth App with callback `http://localhost:8080/auth/callback`).
 
 ## 15. Decisions
