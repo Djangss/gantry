@@ -14,7 +14,7 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <h2 className="px-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">{title}</h2>
+      <h2 className="px-2 text-xs font-medium text-muted-foreground">{title}</h2>
       {children}
     </div>
   );
@@ -34,7 +34,7 @@ export default function Layout() {
   return (
     <div className="flex h-svh flex-col bg-background md:flex-row">
       <nav aria-label="Main" className="flex max-h-[40svh] shrink-0 flex-col gap-4 overflow-y-auto border-b p-3 md:max-h-none md:w-64 md:border-b-0 md:border-r">
-        <div className="px-2 text-lg font-semibold tracking-tight">Gantry</div>
+        <div className="px-2 text-xl heading-condensed">Gantry</div>
         <Section title="Projects">
           {projects.isError && <p className="px-2 text-sm text-destructive">{errorText(projects.error)}</p>}
           {projects.data?.filter((p) => !p.closed).map((p) => (
