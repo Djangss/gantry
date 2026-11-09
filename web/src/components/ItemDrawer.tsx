@@ -26,7 +26,7 @@ function PRStatus({ pr }: { pr: PR }) {
     <div className="flex flex-wrap gap-1">
       {pr.reviews.map((r) => (
         <Badge key={r.user} variant="outline" className={cn(r.state === "APPROVED" && "border-go text-go")}>
-          {r.user}: {r.state.toLowerCase().replace("_", " ")}
+          {r.user}: {r.state.toLowerCase().replaceAll("_", " ")}
         </Badge>
       ))}
       {pr.checks.map((c) => (
@@ -114,8 +114,8 @@ export default function ItemDrawer({ itemRef, onClose }: { itemRef: string; onCl
                   ))}
                 </ul>
                 <div className="flex gap-2">
-                  <Button size="sm" variant="secondary" onClick={() => create("note")}>New note</Button>
-                  <Button size="sm" variant="secondary" onClick={() => create("drawing")}>New drawing</Button>
+                  <Button size="sm" variant="secondary" disabled={!notesRepo} onClick={() => create("note")}>New note</Button>
+                  <Button size="sm" variant="secondary" disabled={!notesRepo} onClick={() => create("drawing")}>New drawing</Button>
                 </div>
               </section>
               <section className="space-y-3 border-t pt-4">
@@ -123,7 +123,7 @@ export default function ItemDrawer({ itemRef, onClose }: { itemRef: string; onCl
                 {i.comments.map((c) => (
                   <div key={c.id} className="space-y-1 border-l-2 pl-3">
                     <p className="text-xs text-muted-foreground">
-                      <span className="font-medium text-foreground">{c.user}</span> on {new Date(c.createdAt).toLocaleString()}
+                      <span className="font-medium text-foreground">{c.user}</span> on {new Date(c.createdAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}
                     </p>
                     <article className="prose prose-sm max-w-none dark:prose-invert">
                       <Markdown remarkPlugins={[remarkGfm]}>{c.body}</Markdown>

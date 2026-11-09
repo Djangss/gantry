@@ -1,5 +1,6 @@
 import { Component, type ReactNode } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 
 export default class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   state: { error: Error | null } = { error: null };
@@ -11,7 +12,10 @@ export default class ErrorBoundary extends Component<{ children: ReactNode }, { 
     return (
       <Alert variant="destructive" className="m-4 w-auto">
         <AlertTitle>This view crashed</AlertTitle>
-        <AlertDescription>{this.state.error.message}</AlertDescription>
+        <AlertDescription className="space-y-2">
+          <p>{this.state.error.message}</p>
+          <Button size="sm" variant="secondary" onClick={() => this.setState({ error: null })}>Try again</Button>
+        </AlertDescription>
       </Alert>
     );
   }

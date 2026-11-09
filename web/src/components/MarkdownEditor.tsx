@@ -5,7 +5,7 @@ import remarkGfm from "remark-gfm";
 import { errorText } from "@/api";
 import FileBar from "@/components/FileBar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { splitFrontmatter } from "@/lib/frontmatter";
+import { previewTitle, splitFrontmatter } from "@/lib/frontmatter";
 import { useEditableFile } from "@/lib/useEditableFile";
 
 type Props = { owner: string; repo: string; path: string; message: string };
@@ -29,7 +29,7 @@ export default function MarkdownEditor({ owner, repo, path, message }: Props) {
           height="100%"
         />
         <article className="prose prose-sm hidden max-w-none overflow-auto p-6 dark:prose-invert lg:block">
-          {title && <h1 className="heading-condensed">{title}</h1>}
+          {previewTitle(title, body) && <h1 className="heading-condensed">{title}</h1>}
           <Markdown remarkPlugins={[remarkGfm]}>{body}</Markdown>
         </article>
       </div>

@@ -1,5 +1,5 @@
 import {
-  DndContext, KeyboardSensor, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent,
+  DndContext, KeyboardSensor, MouseSensor, TouchSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent,
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -58,7 +58,7 @@ function BoardColumn({ col, canMove, onOpen }: { col: Column; canMove: boolean; 
     <section
       aria-label={col.name}
       ref={setNodeRef}
-      className={cn("flex w-72 shrink-0 flex-col gap-2 rounded-sm bg-muted/60 p-2", isOver && "clearance")}
+      className={cn("flex min-h-28 w-72 shrink-0 flex-col gap-2 rounded-sm bg-muted/60 p-2", isOver && "clearance")}
     >
       <h2 className="flex items-center gap-2 px-1 pb-1 text-base heading-condensed">
         {isDone(col.name) && <span aria-hidden className="size-2 rounded-full bg-go" />}
@@ -77,7 +77,9 @@ export default function BoardView() {
   const [params, setParams] = useSearchParams();
   const close = useCallback(() => setParams({}), [setParams]);
   const qc = useQueryClient();
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), useSensor(KeyboardSensor));
+  const sensors = useSensors(useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    // Touch needs a short hold so swiping still scrolls the board.
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }), useSensor(KeyboardSensor));
   const board = useQuery({ queryKey: boardKey(id), queryFn: () => api<Board>(`/api/projects/${encodeURIComponent(id)}/items`) });
   const move = useMutation({
     mutationFn: (v: { itemId: string; optionId: string }) =>

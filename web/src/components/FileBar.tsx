@@ -6,7 +6,7 @@ export default function FileBar({ f, path }: { f: EditableFile; path: string }) 
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-3 border-b px-4 py-2">
-        <code className="truncate font-mono text-xs">{path}</code>
+        <code title={path} className="truncate font-mono text-xs">{path}</code>
         <span role="status" className="ml-auto text-xs text-muted-foreground">
           {f.status || (f.dirty ? "Unsaved changes" : "")}
         </span>

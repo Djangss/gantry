@@ -152,3 +152,9 @@
   font-weight: 650;
   letter-spacing: -0.01em;
 }
+
+/* GFM task lists: the checkbox is the marker, so drop the bullet. */
+.prose .contains-task-list {
+  list-style: none;
+  padding-left: 0;
+}

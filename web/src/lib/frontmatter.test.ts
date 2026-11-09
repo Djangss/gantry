@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { noteTemplate, slugify, splitFrontmatter } from "./frontmatter";
+import { noteTemplate, previewTitle, slugify, splitFrontmatter } from "./frontmatter";
 
 test("flow links, colon in title, body split", () => {
   expect(splitFrontmatter("---\ntitle: Cap: phase 3\nlinks: [Djangss/cap#3, \"o/r#7\"]\n---\n\n# Body")).toEqual({
@@ -27,4 +27,10 @@ test("noteTemplate round-trips", () => {
 test("slugify strips French accents and punctuation", () => {
   expect(slugify("Idées pour Cap: phase 3!")).toBe("idees-pour-cap-phase-3");
   expect(slugify("***")).toBe("untitled");
+});
+
+test("previewTitle hides the frontmatter title when the body opens with its own heading", () => {
+  expect(previewTitle("Ideas", "\n# Ideas\n\ntext")).toBe("");
+  expect(previewTitle("Ideas", "just text")).toBe("Ideas");
+  expect(previewTitle("", "text")).toBe("");
 });

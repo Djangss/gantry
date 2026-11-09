@@ -32,8 +32,19 @@ export function useEditableFile(owner: string, repo: string, path: string, messa
   const latest = useRef({ value, dirty });
   latest.current = { value, dirty };
   useEffect(() => {
-    const t = setInterval(() => latest.current.dirty && saveDraft(key, latest.current.value), 3000);
-    return () => clearInterval(t);
+    const keep = () => latest.current.dirty && saveDraft(key, latest.current.value);
+    const warn = (e: BeforeUnloadEvent) => {
+      if (!latest.current.dirty) return;
+      keep();
+      e.preventDefault();
+    };
+    const t = setInterval(keep, 3000);
+    window.addEventListener("beforeunload", warn);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener("beforeunload", warn);
+      keep(); // leaving the file inside the app keeps the latest edit as a draft
+    };
   }, [key]);
 
   function saved(newSha: string, savedValue: string) {
