@@ -1,0 +1,11 @@
+services:
+  gantry:
+    image: ghcr.io/djangss/gantry:latest
+    container_name: gantry
+    restart: unless-stopped
+    env_file: .env
+    networks: [norish_default]
+
+networks:
+  norish_default:
+    external: true

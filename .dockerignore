@@ -1,0 +1,8 @@
+.git
+.env
+.superpowers
+web/node_modules
+web/dist
+web/screenshots
+web/test-results
+web/playwright-report
