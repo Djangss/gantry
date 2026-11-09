@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router";
 import { ApiError } from "@/api";
 import BoardView from "@/components/BoardView";
+import FilesView from "@/components/FilesView";
 import Home from "@/components/Home";
 import Layout from "@/components/Layout";
 import Login from "@/components/Login";
@@ -22,6 +23,7 @@ export default function App() {
           <Route element={<Layout />}>
             <Route index element={<Home />} />
             <Route path="projects/:id" element={<BoardView />} />
+            <Route path="files/:owner/:repo" element={<FilesView />} />
           </Route>
         </Routes>
       </BrowserRouter>
