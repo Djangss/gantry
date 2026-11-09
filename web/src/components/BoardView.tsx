@@ -3,9 +3,12 @@ import {
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback } from "react";
 import { useParams, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { api, errorText, send } from "@/api";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import ItemDrawer from "@/components/ItemDrawer";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -71,7 +74,8 @@ function BoardColumn({ col, canMove, onOpen }: { col: Column; canMove: boolean; 
 
 export default function BoardView() {
   const { id = "" } = useParams();
-  const [, setParams] = useSearchParams();
+  const [params, setParams] = useSearchParams();
+  const close = useCallback(() => setParams({}), [setParams]);
   const qc = useQueryClient();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), useSensor(KeyboardSensor));
   const board = useQuery({ queryKey: boardKey(id), queryFn: () => api<Board>(`/api/projects/${encodeURIComponent(id)}/items`) });
@@ -108,6 +112,7 @@ export default function BoardView() {
 
   const b = board.data;
   const canMove = b.fieldId !== "";
+  const item = params.get("item");
   const open = (it: Item) => it.repo && it.number && setParams({ item: `${it.repo}#${it.number}` });
 
   function onDragEnd(e: DragEndEvent) {
@@ -128,6 +133,11 @@ export default function BoardView() {
           ))}
         </div>
       </DndContext>
+      {item && (
+        <ErrorBoundary key={item}>
+          <ItemDrawer itemRef={item} onClose={close} />
+        </ErrorBoundary>
+      )}
     </div>
   );
 }
