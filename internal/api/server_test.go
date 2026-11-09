@@ -145,3 +145,10 @@ func TestContentsNestedPath(t *testing.T) {
 		t.Fatalf("%d %s", w.Code, w.Body)
 	}
 }
+
+func TestLinksRejectsBadRef(t *testing.T) {
+	h, c := testServer(t, nil)
+	if w := call(h, c, "GET", "/api/links?ref=nope", ""); w.Code != 400 {
+		t.Fatalf("got %d", w.Code)
+	}
+}

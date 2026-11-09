@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Djangss/gantry/internal/auth"
+	"github.com/Djangss/gantry/internal/notes"
 )
 
 func token(r *http.Request) string {
@@ -122,5 +123,26 @@ func (s *Server) putContents(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err)
 		return
 	}
+	if strings.EqualFold(r.PathValue("owner")+"/"+r.PathValue("repo"), s.cfg.NotesRepo) {
+		s.links.Update(path, in.Content)
+	}
 	writeJSON(w, http.StatusOK, map[string]string{"sha": sha})
+}
+
+func (s *Server) linksFor(w http.ResponseWriter, r *http.Request) {
+	ref := r.URL.Query().Get("ref")
+	if !notes.ValidRef(ref) {
+		badRequest(w, "ref must look like owner/repo#123")
+		return
+	}
+	out, err := s.links.Lookup(r.Context(), token(r), ref)
+	s.reply(w, out, err)
+}
+
+func (s *Server) rescan(w http.ResponseWriter, r *http.Request) {
+	if err := s.links.Rebuild(r.Context(), token(r)); err != nil {
+		s.fail(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }

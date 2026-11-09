@@ -3,9 +3,11 @@ package api
 import (
 	"io/fs"
 	"net/http"
+	"strings"
 
 	"github.com/Djangss/gantry/internal/auth"
 	"github.com/Djangss/gantry/internal/gh"
+	"github.com/Djangss/gantry/internal/notes"
 )
 
 type Config struct {
@@ -19,9 +21,10 @@ type Config struct {
 }
 
 type Server struct {
-	cfg  Config
-	auth *auth.Auth
-	gh   *gh.Client
+	cfg   Config
+	auth  *auth.Auth
+	gh    *gh.Client
+	links *notes.Index
 }
 
 func NewServer(cfg Config, spa fs.FS) (http.Handler, error) {
@@ -31,6 +34,8 @@ func NewServer(cfg Config, spa fs.FS) (http.Handler, error) {
 		return nil, err
 	}
 	s := &Server{cfg: cfg, auth: a, gh: gh.New(cfg.GitHubAPIURL)}
+	owner, repo, _ := strings.Cut(cfg.NotesRepo, "/")
+	s.links = notes.New(s.gh, owner, repo)
 
 	api := http.NewServeMux()
 	api.HandleFunc("GET /api/me", s.me)
@@ -43,6 +48,8 @@ func NewServer(cfg Config, spa fs.FS) (http.Handler, error) {
 	api.HandleFunc("GET /api/repos/{owner}/{repo}/tree", s.tree)
 	api.HandleFunc("GET /api/repos/{owner}/{repo}/contents/{path...}", s.getContents)
 	api.HandleFunc("PUT /api/repos/{owner}/{repo}/contents/{path...}", s.putContents)
+	api.HandleFunc("GET /api/links", s.linksFor)
+	api.HandleFunc("POST /api/links/rescan", s.rescan)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
