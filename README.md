@@ -2,7 +2,7 @@
 
 # Gantry
 
-A launch gantry holds a rocket in place until it's ready to go. Gantry does the same for your projects. It's a personal hub that puts your GitHub Projects kanban, issues and pull requests, repo docs, Markdown notes and Excalidraw drawings in one place, all stored in GitHub.
+A gantry crane lifts cargo and moves it where it needs to go. Gantry does the same for your work. It's a personal hub that puts your GitHub Projects kanban, issues and pull requests, repo docs, Markdown notes and Excalidraw drawings in one place, all stored in GitHub.
 
 ![Board in dark mode](docs/screenshots/board-1440-dark.png)
 
