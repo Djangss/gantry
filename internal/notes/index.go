@@ -157,6 +157,13 @@ func (x *Index) Lookup(ctx context.Context, token, ref string) ([]Entry, error) 
 	return out, nil
 }
 
+// Invalidate makes the next Lookup rescan, e.g. after a push to the notes repo from elsewhere.
+func (x *Index) Invalidate() {
+	x.mu.Lock()
+	x.built = false
+	x.mu.Unlock()
+}
+
 // Update re-parses one saved file; before the first scan it does nothing, since the scan will read it.
 func (x *Index) Update(path, content string) {
 	if kind(path) == "" {

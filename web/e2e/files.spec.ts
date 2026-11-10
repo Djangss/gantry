@@ -116,3 +116,23 @@ test("an unknown repo shows the error and no Watch button", async ({ page }) => 
   await expect(page.getByText("Not Found")).toBeVisible();
   await expect(page.getByRole("button", { name: "Watch" })).toHaveCount(0);
 });
+
+test("a live event refetches the board", async ({ page }) => {
+  await mockApi(page);
+  let boardLoads = 0;
+  page.on("request", (r) => {
+    if (new URL(r.url()).pathname === "/api/projects/P1/items") boardLoads++;
+  });
+  let sent = false;
+  await page.route("**/api/events", (route) => {
+    // First connection gets one event; 204 on reconnect tells EventSource to stop,
+    // so only the event itself (not a reconnect refresh) can trigger the refetch.
+    if (sent) return route.fulfill({ status: 204 });
+    sent = true;
+    const body = 'data: {"type":"issues","repo":"Djangss/gantry","number":3}\n\n';
+    return route.fulfill({ status: 200, headers: { "Content-Type": "text/event-stream" }, body });
+  });
+  await page.goto("/projects/P1");
+  await expect(page.getByRole("button", { name: "Write spec", exact: true })).toBeVisible();
+  await expect.poll(() => boardLoads).toBeGreaterThanOrEqual(2);
+});

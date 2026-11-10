@@ -174,3 +174,14 @@ func TestETagSkipsOversizedBodies(t *testing.T) {
 		t.Fatalf("oversized body was cached: size %d", tr.size)
 	}
 }
+
+func TestClearCache(t *testing.T) {
+	srv, seen := recorder(t)
+	c := New(srv.URL)
+	get(t, c, "tok", "/x")
+	c.ClearCache()
+	get(t, c, "tok", "/x")
+	if fmt.Sprint(*seen) != "[GET /x inm= GET /x inm=]" {
+		t.Fatalf("second GET should not be conditional after ClearCache: %v", *seen)
+	}
+}

@@ -13,7 +13,7 @@ import (
 	"github.com/Djangss/gantry/internal/auth"
 )
 
-func testServer(t *testing.T, routes map[string]http.HandlerFunc) (http.Handler, *http.Cookie) {
+func testServer(t *testing.T, routes map[string]http.HandlerFunc, opts ...func(*Config)) (http.Handler, *http.Cookie) {
 	mux := http.NewServeMux()
 	for p, h := range routes {
 		mux.HandleFunc(p, h)
@@ -22,6 +22,9 @@ func testServer(t *testing.T, routes map[string]http.HandlerFunc) (http.Handler,
 	t.Cleanup(fake.Close)
 	cfg := Config{ClientID: "id", ClientSecret: "s", CookieKey: make([]byte, 32), AllowedLogin: "Djangss",
 		NotesRepo: "Djangss/notes", BaseURL: "http://gantry.test", Port: "8080", GitHubWebURL: fake.URL, GitHubAPIURL: fake.URL}
+	for _, o := range opts {
+		o(&cfg)
+	}
 	h, err := NewServer(cfg, fstest.MapFS{"index.html": {Data: []byte("app")}})
 	if err != nil {
 		t.Fatal(err)

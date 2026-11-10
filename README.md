@@ -12,6 +12,7 @@ A gantry crane lifts cargo and moves it where it needs to go. Gantry does the sa
 - **Issue and PR drawer** with comments, reviews, checks and the notes linked to that issue.
 - **Repo docs, edited in place.** Open any repo's `docs/` folder, edit Markdown with live preview, and each save is a commit.
 - **Notes and drawings** in a private notes repo, linked to issues by `owner/repo#123`.
+- **Live updates.** With webhooks set up, an issue edited on GitHub updates the open board and drawer without a reload.
 - **Work is never lost silently.** Drafts survive a crash, and a save that conflicts with a change on GitHub asks you what to keep.
 
 ## Architecture
@@ -50,3 +51,13 @@ cd web && npx playwright test screens   # writes screenshots/ for every view, li
 ## Deploy
 
 Push a `v*` tag to build and publish `ghcr.io/djangss/gantry`. On the server, put the environment variables above in `.env` next to `compose.yaml`, then run `docker compose up -d` behind your reverse proxy.
+
+### Live updates (optional)
+
+Set `WEBHOOK_SECRET` (any long random string, e.g. `openssl rand -hex 32`) in `.env`. Then, for each repo or organization you want live:
+
+1. GitHub → the repo (or org) → **Settings → Webhooks → Add webhook**.
+2. Payload URL `https://<your-host>/webhooks/github`, content type `application/json`, secret = `WEBHOOK_SECRET`.
+3. Events: **Issues, Issue comments, Pull requests, Pull request reviews, Pushes** (and **Projects v2 items** on an organization webhook).
+
+GitHub only sends Projects v2 item events for organization-owned projects. Card moves on personal boards show up on the next refresh; issue edits are still live. Without `WEBHOOK_SECRET` the webhook endpoint returns 404.

@@ -108,3 +108,15 @@ func TestLookupFailsOnUpstreamError(t *testing.T) {
 		t.Fatal("a transient 5xx must fail the build, not drop the file from the index")
 	}
 }
+
+func TestInvalidateRescansOnNextLookup(t *testing.T) {
+	src := newFake()
+	x := New(src, "Djangss", "notes")
+	bg := context.Background()
+	x.Lookup(bg, "tok", "o/r#1")
+	x.Invalidate()
+	x.Lookup(bg, "tok", "o/r#1")
+	if n := src.trees.Load(); n != 2 {
+		t.Fatalf("tree listed %d times, want a rescan after Invalidate", n)
+	}
+}
