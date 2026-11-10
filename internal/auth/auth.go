@@ -145,6 +145,9 @@ func (a *Auth) Callback(w http.ResponseWriter, r *http.Request) {
 	}
 	if !strings.EqualFold(login, a.opt.AllowedLogin) {
 		slog.Warn("login rejected", "login", login)
+		if err := a.revoke(r.Context(), token); err != nil {
+			slog.Warn("rejected login: token not revoked", "err", err)
+		}
 		http.Error(w, "this Gantry instance is private", http.StatusForbidden)
 		return
 	}
