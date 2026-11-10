@@ -24,6 +24,7 @@ const note = "---\ntitle: Board UX ideas\nlinks: [Djangss/gantry#7]\n---\n\n# Bo
 
 export async function mockApi(page: Page) {
   let patched: unknown = null;
+  let commented: unknown = null;
   await page.route("**/api/**", async (route) => {
     const req = route.request();
     const p = new URL(req.url()).pathname;
@@ -36,11 +37,15 @@ export async function mockApi(page: Page) {
       patched = req.postDataJSON();
       return route.fulfill({ status: 204 });
     }
+    if (p === "/api/repos/Djangss/gantry/issues/7/comments" && req.method() === "POST") {
+      commented = req.postDataJSON();
+      return json({ id: 2, user: "Djangss", body: "x", createdAt: "2026-11-10T10:00:00Z" }, 201);
+    }
     if (p === "/api/repos/Djangss/gantry/issues/7") return json(issue);
     if (p === "/api/links") return json([{ path: "notes/board-ux-ideas.md", title: "Board UX ideas", kind: "note" }]);
     if (p === "/api/repos/Djangss/notes/tree") return json([{ path: "notes/board-ux-ideas.md", type: "blob" }, { path: "drawings/architecture.excalidraw", type: "blob" }]);
     if (p === "/api/repos/Djangss/notes/contents/notes/board-ux-ideas.md") return json({ content: note, sha: "s1" });
     return json({ error: "not mocked: " + p, code: "not_found" }, 404);
   });
-  return { patched: () => patched };
+  return { patched: () => patched, commented: () => commented };
 }

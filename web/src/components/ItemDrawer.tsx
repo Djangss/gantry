@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { isSubmit, modLabel } from "@/lib/keys";
 import { meQuery } from "@/lib/me";
 import { parseRef } from "@/lib/ref";
 import { cn } from "@/lib/utils";
@@ -134,13 +135,19 @@ export default function ItemDrawer({ itemRef, onClose }: { itemRef: string; onCl
                   className="space-y-2"
                   onSubmit={(e) => {
                     e.preventDefault();
-                    if (text.trim()) comment.mutate(text);
+                    if (text.trim() && !comment.isPending) comment.mutate(text);
                   }}
                 >
-                  <Textarea placeholder="Add a comment" value={text} onChange={(e) => setText(e.target.value)} rows={4} />
+                  <Textarea
+                    placeholder="Add a comment"
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    onKeyDown={(e) => isSubmit(e) && e.currentTarget.form?.requestSubmit()}
+                    rows={4}
+                  />
                   {comment.isError && <p className="text-sm text-destructive">{errorText(comment.error)}</p>}
                   <Button type="submit" size="sm" disabled={comment.isPending || !text.trim()}>
-                    Comment
+                    Comment <kbd className="ml-1 text-xs opacity-70">{modLabel(navigator.platform)}Enter</kbd>
                   </Button>
                 </form>
               </section>
