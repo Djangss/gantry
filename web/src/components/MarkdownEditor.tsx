@@ -25,21 +25,21 @@ export default function MarkdownEditor({ owner, repo, path, message }: Props) {
   return (
     <div className="flex h-full flex-col">
       <FileBar f={f} path={path} />
-      <div className="flex gap-1 border-b px-4 py-1 lg:hidden">
+      <div className="flex gap-1 border-b bg-card px-4 py-1 lg:hidden">
         <Button size="sm" variant={preview ? "ghost" : "secondary"} aria-pressed={!preview} onClick={() => setPreview(false)}>Edit</Button>
         <Button size="sm" variant={preview ? "secondary" : "ghost"} aria-pressed={preview} onClick={() => setPreview(true)}>Preview</Button>
       </div>
       <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-2">
         <CodeMirror
-          className={cn("min-h-0 overflow-auto border-r text-sm", preview && "hidden lg:block")}
+          className={cn("min-h-0 overflow-auto border-r bg-card text-sm", preview && "hidden lg:block")}
           value={f.value}
           onChange={f.setContent}
           extensions={[markdown()]}
           theme={editorTheme(dark)}
           height="100%"
         />
-        <article className={cn("prose prose-sm max-w-none overflow-auto p-6 dark:prose-invert", !preview && "hidden lg:block")}>
-          {previewTitle(title, body) && <h1 className="heading-condensed">{title}</h1>}
+        <article className={cn("prose prose-sm max-w-none overflow-auto px-8 py-7 dark:prose-invert prose-headings:heading-condensed prose-a:decoration-hazard prose-a:decoration-2 prose-a:underline-offset-3", !preview && "hidden lg:block")}>
+          {previewTitle(title, body) && <h1 className="text-[34px]">{title}</h1>}
           <Markdown remarkPlugins={[remarkGfm]}>{body}</Markdown>
         </article>
       </div>

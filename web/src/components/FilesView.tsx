@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { FileText, PenTool } from "lucide-react";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router";
 import { api, errorText, send } from "@/api";
@@ -87,15 +88,19 @@ export default function FilesView() {
 
   return (
     <div className="grid h-full grid-cols-1 md:grid-cols-[16rem_1fr]">
-      <aside aria-label="Files" className="space-y-3 overflow-y-auto border-b p-3 md:border-b-0 md:border-r">
-        <h1 className="truncate text-base heading-condensed">
+      <aside aria-label="Files" className="space-y-3 overflow-y-auto border-b bg-muted/50 p-3 md:border-b-0 md:border-r">
+        <h1 className="truncate px-1 text-[22px] heading-condensed">
           {isNotes ? "My notes" : `${owner}/${repo}`}
           {root && <span className="font-normal text-muted-foreground"> / {root}</span>}
         </h1>
         {isNotes && (
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" onClick={() => startCreate("note")}>New note</Button>
-            <Button size="sm" variant="secondary" onClick={() => startCreate("drawing")}>New drawing</Button>
+            <Button size="sm" onClick={() => startCreate("note")}>
+              <FileText aria-hidden /> New note
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => startCreate("drawing")}>
+              <PenTool aria-hidden /> New drawing
+            </Button>
             <Button size="sm" variant="ghost" onClick={() => void rescan()}>Rescan links</Button>
           </div>
         )}
@@ -103,7 +108,7 @@ export default function FilesView() {
         {tree.isPending && <Skeleton className="h-32" />}
         {tree.isError && <QueryError error={tree.error} retry={tree.refetch} />}
         {tree.data && (
-          <Input type="search" aria-label="Filter files" placeholder="Filter files" value={query} onChange={(e) => setQuery(e.target.value)} className="h-8" />
+          <Input type="search" aria-label="Filter files" placeholder="Filter files" value={query} onChange={(e) => setQuery(e.target.value)} className="h-8 bg-card" />
         )}
         {tree.data && files.length === 0 && (
           <p className="text-sm text-muted-foreground">
@@ -120,9 +125,18 @@ export default function FilesView() {
               <button
                 type="button"
                 onClick={() => open(f.path)}
-                className={cn("block w-full truncate rounded-sm px-2 py-1 text-left font-mono text-xs hover:bg-accent", f.path === path && "bg-accent")}
+                aria-current={f.path === path ? "page" : undefined}
+                className={cn(
+                  "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left font-mono text-xs hover:bg-card",
+                  f.path === path && "bg-card font-semibold shadow-[inset_3px_0_0_var(--hazard)]",
+                )}
               >
-                {root ? f.path.slice(root.length + 1) : f.path}
+                {f.path.endsWith(".excalidraw") ? (
+                  <PenTool aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
+                ) : (
+                  <FileText aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
+                )}
+                <span className="truncate">{root ? f.path.slice(root.length + 1) : f.path}</span>
               </button>
             </li>
           ))}
@@ -151,7 +165,12 @@ export default function FilesView() {
       </Dialog>
       <section className="min-h-0 overflow-hidden">
         {!path ? (
-          <p className="p-6 text-muted-foreground">Pick a file on the left.</p>
+          <div className="grid h-full place-items-center p-6 text-center text-muted-foreground">
+            <div className="space-y-2">
+              <FileText aria-hidden className="mx-auto size-8 opacity-50" />
+              <p>Pick a file on the left.</p>
+            </div>
+          </div>
         ) : path.endsWith(".excalidraw") ? (
           <ErrorBoundary key={path}>
             <Suspense fallback={<Skeleton className="m-4 h-96" />}>
