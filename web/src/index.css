@@ -12,6 +12,11 @@
     --font-sans: 'Archivo Variable', system-ui, sans-serif;
     --font-mono: 'Martian Mono Variable', ui-monospace, monospace;
     --color-go: var(--go);
+    --color-rail: var(--rail);
+    --color-rail-foreground: var(--rail-foreground);
+    --color-rail-muted: var(--rail-muted);
+    --color-stage-todo: var(--stage-todo);
+    --color-stage-done: var(--stage-done);
     --color-hazard: var(--hazard);
     --color-hazard-foreground: var(--hazard-foreground);
     --color-sidebar-ring: var(--sidebar-ring);
@@ -55,22 +60,22 @@
 }
 
 :root {
-    --background: #eef0ee;
+    --background: #eceeed;
     --foreground: #1c2530;
-    --card: #fbfcfb;
+    --card: #ffffff;
     --card-foreground: #1c2530;
-    --popover: #fbfcfb;
+    --popover: #ffffff;
     --popover-foreground: #1c2530;
     --primary: #1c2530;
     --primary-foreground: #f4f6f4;
     --secondary: #e1e5e3;
     --secondary-foreground: #1c2530;
-    --muted: #e4e8e6;
-    --muted-foreground: #566573;
+    --muted: #dfe4e1;
+    --muted-foreground: #5a6773;
     --accent: #dde3e1;
     --accent-foreground: #1c2530;
     --destructive: #c8402f;
-    --border: #cfd6d3;
+    --border: #d2d9d5;
     --input: #c4ccc9;
     --ring: #d4a514;
     --chart-1: oklch(0.87 0 0);
@@ -90,21 +95,26 @@
     --go: #2f8f5b;
     --hazard: #f2c230;
     --hazard-foreground: #1c2530;
+    --rail: #2b3238;
+    --rail-foreground: #e9edf0;
+    --rail-muted: #a7b2bc;
+    --stage-todo: #56636f;
+    --stage-done: #23784b;
 }
 
 .dark {
-    --background: #151b21;
+    --background: #141a1f;
     --foreground: #e6eaec;
-    --card: #1d252d;
+    --card: #212a32;
     --card-foreground: #e6eaec;
-    --popover: #1d252d;
+    --popover: #212a32;
     --popover-foreground: #e6eaec;
     --primary: #f2c230;
     --primary-foreground: #1c2530;
     --secondary: #26303a;
     --secondary-foreground: #e6eaec;
-    --muted: #222b34;
-    --muted-foreground: #94a2ae;
+    --muted: #1a2128;
+    --muted-foreground: #9aa7b2;
     --accent: #2a3540;
     --accent-foreground: #e6eaec;
     --destructive: #e5604d;
@@ -127,6 +137,11 @@
     --go: #4cb37b;
     --hazard: #f2c230;
     --hazard-foreground: #1c2530;
+    --rail: #0d1115;
+    --rail-foreground: #e6eaec;
+    --rail-muted: #9aa7b2;
+    --stage-todo: #4a5763;
+    --stage-done: #23784b;
 }
 
 @layer base {
@@ -145,6 +160,15 @@
   outline: 2px solid var(--hazard);
   outline-offset: -2px;
   background-image: repeating-linear-gradient(-45deg, color-mix(in oklab, var(--hazard) 18%, transparent) 0 8px, transparent 8px 16px);
+}
+
+/* Column headers are chained arrow plates, so the board reads left to right. */
+@utility plate {
+  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 50%, calc(100% - 16px) 100%, 0 100%, 16px 50%);
+}
+
+@utility plate-start {
+  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 50%, calc(100% - 16px) 100%, 0 100%);
 }
 
 @utility heading-condensed {

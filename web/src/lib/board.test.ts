@@ -1,7 +1,7 @@
 import { QueryClient } from "@tanstack/react-query";
 import { expect, test } from "vitest";
 import type { Board } from "@/types";
-import { boardKey, columns, isDone, moveItem, optimisticMove } from "./board";
+import { boardKey, columns, isDone, moveItem, optimisticMove, stage } from "./board";
 
 const board: Board = {
   title: "Gantry",
@@ -45,4 +45,8 @@ test("optimisticMove applies at once and rollback restores", async () => {
 
 test("isDone recognises finished columns", () => {
   expect(["Done", "shipped", "Closed", "Todo", "In progress"].map(isDone)).toEqual([true, true, true, false, false]);
+});
+
+test("stage sorts columns into waiting, active and finished", () => {
+  expect(["Todo", "Backlog", "No status", "In progress", "Review", "Done"].map(stage)).toEqual(["todo", "todo", "todo", "doing", "doing", "done"]);
 });

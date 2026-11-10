@@ -11,12 +11,16 @@ column. Each steel member is split into a lit and a shaded facet; the background
 
 ## Principles
 
-- **Structure first.** Columns, panes and the sidebar read like the levels of a tower:
-  flat panels, thin borders, small radii. Hierarchy comes from weight and width, not shadows.
-- **Yellow means "act here".** Safety yellow is reserved for the thing you're touching
-  (drop targets, focus rings, the primary action in dark mode). It never appears as decoration.
-- **Green means done.** `--go` marks completed work: the Done column, passing checks,
-  approved reviews.
+- **Work flows left to right.** Column headers are chained arrow plates painted by stage:
+  steel for waiting work, safety yellow for active work, green for finished work. A stage
+  track next to the board title shows the same split at a glance.
+- **Structure first.** Flat panels, thin borders, small radii. Hierarchy comes from weight,
+  width and the steel rail, not shadows.
+- **Yellow means "active".** Safety yellow marks work in progress and the thing you're touching
+  (the In progress plate, drop targets, the lifted card, focus rings, the active project marker,
+  the sign-in button). It never appears as decoration.
+- **Green means done.** `--go` / `--stage-done` mark completed work: the Done column, passing
+  checks, approved reviews.
 - **Dense, calm, legible.** It's a daily tool: 14px UI text, 13px card text, compact
   padding, nothing animated unless you caused it.
 - **Identifiers are code.** Issue refs (`owner/repo#12`), paths and SHAs use the mono face.
@@ -26,14 +30,19 @@ column. Each steel member is split into a lit and a shaded facet; the background
 
 | Token | Light | Dark | Role |
 |---|---|---|---|
-| `--background` | `#eef0ee` concrete | `#151b21` night pad | app canvas |
-| `--card` / `--popover` | `#fbfcfb` | `#1d252d` | cards, drawer, menus |
+| `--background` | `#eceeed` concrete | `#141a1f` night pad | app canvas |
+| `--card` / `--popover` | `#ffffff` | `#212a32` | cards, drawer, menus |
+| `--muted` | `#dfe4e1` | `#1a2128` | column bodies |
+| `--rail` | `#2b3238` painted steel | `#0d1115` | sidebar, mobile header, login |
+| `--rail-foreground` / `--rail-muted` | `#e9edf0` / `#a7b2bc` | `#e6eaec` / `#9aa7b2` | text on the rail |
+| `--stage-todo` | `#56636f` | `#4a5763` | waiting column plate |
+| `--stage-done` | `#23784b` | `#23784b` | finished column plate (white text passes 4.5:1) |
 | `--foreground` / `--primary` (light) | `#1c2530` steel ink | `#e6eaec` | text, primary buttons (light) |
 | `--primary` (dark) | — | `#f2c230` safety yellow | primary buttons (dark) |
-| `--muted-foreground` | `#566573` girder grey | `#94a2ae` | secondary text |
-| `--border` | `#cfd6d3` | `#2e3944` | panel edges |
+| `--muted-foreground` | `#5a6773` girder grey | `#9aa7b2` | secondary text |
+| `--border` | `#d2d9d5` | `#2e3944` | panel edges |
 | `--ring` | `#d4a514` | `#f2c230` | keyboard focus |
-| `--hazard` | `#f2c230` | `#f2c230` | drop targets, "act here" |
+| `--hazard` | `#f2c230` | `#f2c230` | in progress plate, drop targets, "act here" |
 | `--go` | `#2f8f5b` | `#4cb37b` | done, passing, approved |
 | `--destructive` | `#c8402f` abort red | `#e5604d` | failures, overwrite |
 
@@ -43,27 +52,36 @@ GitHub label colours are the only raw hex values allowed in components; they com
 
 - **Archivo Variable** for everything in the UI. Its width axis carries hierarchy: page and
   column titles use the `heading-condensed` utility (78% width, weight 650), body stays at 100%.
+  The board title is 34px condensed.
 - **Martian Mono Variable** for identifiers only: refs, file paths, commit messages.
-- Scale: 12 / 13 / 14 / 16 / 20 / 28 px. Sentence case everywhere. No all-caps labels.
+- Scale: 11 / 12 / 14 / 17 / 22 / 34 px. Sentence case everywhere. No all-caps labels.
 
 ## Layout and anatomy
 
 ```
-┌ sidebar 16rem ┬──────────────────────────────────────────────┐
-│ Gantry        │ Board title (condensed 20px)                 │
-│ Projects      │ ┌ Todo 3 ┐ ┌ In progress 1 ┐ ┌ Done 4 ●go ┐  │
-│  · v1         │ │ card   │ │ card          │ │ card       │  │
-│ Notes         │ │ card   │ │               │ │            │  │
-│ Docs          │ └────────┘ └───────────────┘ └────────────┘  │
-│ login  Sign out                                              │
-└───────────────┴──────────────────────────────────────────────┘
+┌ steel rail ──────┬──────────────────────────────────────────────┐
+│ [crane] Gantry   │ Gantry v1   ▬▬▬▬▬▬▬▬▬▬▬▬  3 of 9 done            │
+│ Projects         │ ▛ Todo 4 ▶ ▛ In progress 2 ▶ ▛ ✓ Done 3 ▶    │
+│  ■ Gantry v1     │ │ card   │ │ card          │ │ card       │    │
+│ Notes            │ │ card   │ │               │ │            │    │
+│ Repos            │ └────────┘ └───────────────┘ └────────────┘    │
+│ (D) login  Sign out                                             │
+└──────────────────┴──────────────────────────────────────────────┘
 ```
 
-- **Column:** a `bg-muted/60` panel, 18rem wide, 4px radius. The header has the condensed name
-  and a plain count. The Done column (an option named done/shipped/closed) shows a `--go` dot.
-- **Card:** a `bg-card` panel with a 1px border, no shadow at rest. The title is 13px medium,
-  the ref is in mono 11px, labels are outline badges with the GitHub colour as border.
-  While dragging, the card lifts with a single shadow.
+- **Sidebar:** the `--rail` steel panel with the crane logo (`/favicon.svg`). Section titles in
+  `--rail-muted`. The active project has a yellow square marker; repo names are in mono, and the repo filter is a translucent field on the rail.
+
+- **Column:** 19.5rem wide. The header is an arrow plate (`plate`, or `plate-start` for the first
+  column) painted by `stage()` in `web/src/lib/board.ts`: todo/backlog/triage/ready/new/no status
+  are steel, done/shipped/closed are green with a check, anything else is yellow. The count sits
+  in a dark chip. The body is a `bg-muted` panel that stops short of the arrow tip.
+- **Stage track:** next to the board title, one segment per column sized by its card count and
+  painted by stage, with "n of m done" below.
+- **Card:** a `bg-card` panel with a 1px border and a 2px bottom edge, no shadow at rest. A kind
+  icon (issue, pull request, draft, or a green check in Done) sits before the 14px medium title.
+  The ref is in mono 11px; labels are chips with a dot in the GitHub colour.
+  While dragging, the card tilts, gets a yellow border and lifts with a single shadow.
 - **Drop target (signature):** the hovered column gets the `clearance` utility. It shows hazard
   stripes and a yellow outline, like a pad being cleared for launch. This is the one bold
   element in the app.
@@ -78,5 +96,5 @@ GitHub label colours are the only raw hex values allowed in components; they com
 - Shadows on resting cards, or cards nested inside cards.
 - Middle-dot meta strings (`a · b · c`); use separate spans with spacing.
 - All-caps or tracked-out eyebrow labels above headings.
-- Yellow as decoration, or more than one yellow element in view at rest.
+- Yellow as decoration, or yellow on anything that isn't active work or the thing you're touching.
 - `→` appended to buttons or links.

@@ -27,3 +27,9 @@ export async function optimisticMove(qc: QueryClient, projectId: string, itemId:
 
 // Finished columns get the "go" marker (docs/design.md).
 export const isDone = (name: string) => /^(done|shipped|closed)$/i.test(name.trim());
+
+export type Stage = "todo" | "doing" | "done";
+
+// Stage colours the column header: waiting steel, active yellow, finished green.
+export const stage = (name: string): Stage =>
+  isDone(name) ? "done" : /^(todo|to do|backlog|triage|ready|new|no status)$/i.test(name.trim()) ? "todo" : "doing";

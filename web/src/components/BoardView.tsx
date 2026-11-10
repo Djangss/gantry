@@ -2,6 +2,7 @@ import {
   DndContext, KeyboardSensor, MouseSensor, TouchSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent,
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
+import { Check, CircleCheck, CircleDashed, CircleDot, GitPullRequest } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { useParams, useSearchParams } from "react-router";
@@ -10,65 +11,97 @@ import { api, errorText, send } from "@/api";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import ItemDrawer from "@/components/ItemDrawer";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { boardKey, columns, isDone, optimisticMove, type Column } from "@/lib/board";
+import { boardKey, columns, optimisticMove, stage, type Column, type Stage } from "@/lib/board";
 import { cn } from "@/lib/utils";
 import type { Board, Item } from "@/types";
 
-function Card({ item, canMove, onOpen }: { item: Item; canMove: boolean; onOpen: (i: Item) => void }) {
+const plateClass: Record<Stage, string> = {
+  todo: "bg-stage-todo text-white",
+  doing: "bg-hazard text-hazard-foreground",
+  done: "bg-stage-done text-white",
+};
+
+function KindIcon({ item, done }: { item: Item; done: boolean }) {
+  const cls = cn("mt-0.5 size-[15px] shrink-0", done ? "text-go" : "text-muted-foreground");
+  if (done) return <CircleCheck aria-hidden className={cls} />;
+  if (item.kind === "PullRequest") return <GitPullRequest aria-hidden className={cls} />;
+  if (item.kind === "DraftIssue") return <CircleDashed aria-hidden className={cls} />;
+  return <CircleDot aria-hidden className={cls} />;
+}
+
+function Card({ item, done, canMove, onOpen }: { item: Item; done: boolean; canMove: boolean; onOpen: (i: Item) => void }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: item.id, disabled: !canMove });
   const openable = item.kind !== "DraftIssue";
   return (
     <article
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform) }}
-      className={cn("space-y-1.5 rounded-sm border bg-card p-2.5 text-card-foreground", isDragging && "relative z-10 shadow-lg")}
+      className={cn(
+        "space-y-2 rounded-sm border border-b-2 bg-card px-3 py-2.5 text-card-foreground hover:border-muted-foreground/50",
+        canMove && "cursor-grab",
+        isDragging && "relative z-10 -rotate-2 cursor-grabbing border-hazard shadow-xl hover:border-hazard",
+      )}
       {...listeners}
       {...attributes}
     >
-      {openable ? (
-        <button type="button" className="text-left text-[13px] font-medium leading-snug hover:underline" onClick={() => onOpen(item)}>
-          {item.title}
-        </button>
-      ) : (
-        <p className="text-[13px] font-medium leading-snug">{item.title}</p>
-      )}
-      <p className="flex items-center gap-2 text-[11px] text-muted-foreground">
-        <span className="font-mono">{openable ? `${item.repo}#${item.number}` : "Draft"}</span>
-        {item.kind === "PullRequest" && <span>Pull request</span>}
-      </p>
-      {item.labels.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {item.labels.map((l) => (
-            <Badge key={l.name} variant="outline" className="text-[11px]" style={{ borderColor: `#${l.color}` }}>
-              {l.name}
-            </Badge>
-          ))}
-        </div>
-      )}
+      <div className="flex gap-2">
+        <KindIcon item={item} done={done} />
+        {openable ? (
+          <button type="button" className="text-left text-sm font-medium leading-snug hover:underline underline-offset-3" onClick={() => onOpen(item)}>
+            {item.title}
+          </button>
+        ) : (
+          <p className="text-sm font-medium leading-snug">{item.title}</p>
+        )}
+      </div>
+      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 pl-[23px]">
+        <span className="font-mono text-[11px] text-muted-foreground">{openable ? `${item.repo}#${item.number}` : "Draft"}</span>
+        {item.labels.map((l) => (
+          <span key={l.name} className="inline-flex h-5 items-center gap-1.5 rounded-full bg-muted px-2 text-[11px] font-medium">
+            <span aria-hidden className="size-[7px] rounded-full" style={{ background: `#${l.color}` }} />
+            {l.name}
+          </span>
+        ))}
+      </div>
     </article>
   );
 }
 
-function BoardColumn({ col, canMove, onOpen }: { col: Column; canMove: boolean; onOpen: (i: Item) => void }) {
+function BoardColumn({ col, first, canMove, onOpen }: { col: Column; first: boolean; canMove: boolean; onOpen: (i: Item) => void }) {
   const { setNodeRef, isOver } = useDroppable({ id: col.id, disabled: col.id === "" });
+  const s = stage(col.name);
   return (
-    <section
-      aria-label={col.name}
-      ref={setNodeRef}
-      className={cn("flex min-h-28 w-72 shrink-0 flex-col gap-2 rounded-sm bg-muted/60 p-2", isOver && "clearance")}
-    >
-      <h2 className="flex items-center gap-2 px-1 pb-1 text-base heading-condensed">
-        {isDone(col.name) && <span aria-hidden className="size-2 rounded-full bg-go" />}
-        {col.name}
-        <span className="ml-auto text-xs font-normal text-muted-foreground">{col.items.length}</span>
+    <section aria-label={col.name} ref={setNodeRef} className="flex w-78 shrink-0 flex-col">
+      <h2 className={cn("flex h-10 items-center gap-2 pr-7 text-[17px] heading-condensed", first ? "plate-start pl-3.5" : "plate pl-7", plateClass[s])}>
+        {s === "done" && <Check aria-hidden className="size-4" strokeWidth={2.4} />}
+        <span className="flex-1 truncate">{col.name}</span>
+        <span className="min-w-6 rounded-full bg-black/15 px-1.5 text-center text-xs font-semibold">{col.items.length}</span>
       </h2>
-      {col.items.map((it) => (
-        <Card key={it.id} item={it} canMove={canMove} onOpen={onOpen} />
-      ))}
+      <div className={cn("mr-3.5 flex min-h-40 flex-col gap-2 bg-muted px-2 pt-2.5 pb-3", isOver && "clearance")}>
+        {col.items.map((it) => (
+          <Card key={it.id} item={it} done={s === "done"} canMove={canMove} onOpen={onOpen} />
+        ))}
+      </div>
     </section>
+  );
+}
+
+// One segment per column, sized by its card count and coloured by stage.
+function StageTrack({ cols }: { cols: Column[] }) {
+  const total = cols.reduce((n, c) => n + c.items.length, 0);
+  const done = cols.filter((c) => stage(c.name) === "done").reduce((n, c) => n + c.items.length, 0);
+  if (total === 0) return null;
+  return (
+    <div className="space-y-1.5">
+      <div aria-hidden className="flex h-2 w-56 gap-0.5">
+        {cols.filter((c) => c.items.length).map((c) => (
+          <span key={c.id} className={plateClass[stage(c.name)]} style={{ flexGrow: c.items.length }} />
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground">{done} of {total} done</p>
+    </div>
   );
 }
 
@@ -98,7 +131,7 @@ export default function BoardView() {
     return (
       <div className="flex gap-3 p-4">
         {[0, 1, 2].map((i) => (
-          <Skeleton key={i} className="h-64 w-72" />
+          <Skeleton key={i} className="h-64 w-78" />
         ))}
       </div>
     );
@@ -114,6 +147,7 @@ export default function BoardView() {
 
   const b = board.data;
   const canMove = b.fieldId !== "";
+  const cols = columns(b);
   const item = params.get("item");
   const open = (it: Item) => it.repo && it.number && setParams({ item: `${it.repo}#${it.number}` });
 
@@ -125,13 +159,16 @@ export default function BoardView() {
   }
 
   return (
-    <div className="flex h-full flex-col gap-3 p-4">
-      <h1 className="text-xl heading-condensed">{b.title}</h1>
+    <div className="flex h-full flex-col gap-5 p-4 md:px-7 md:pt-6">
+      <header className="flex flex-wrap items-end gap-x-7 gap-y-3">
+        <h1 className="text-[34px] leading-none heading-condensed">{b.title}</h1>
+        <StageTrack cols={cols} />
+      </header>
       {!canMove && <p className="text-sm text-muted-foreground">Add a single-select Status field to this project on GitHub to move cards.</p>}
       <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-        <div className="flex min-h-0 flex-1 items-start gap-3 overflow-x-auto pb-2">
-          {columns(b).map((c) => (
-            <BoardColumn key={c.id} col={c} canMove={canMove} onOpen={open} />
+        <div className="flex min-h-0 flex-1 items-start gap-1.5 overflow-x-auto pb-2">
+          {cols.map((c, i) => (
+            <BoardColumn key={c.id} col={c} first={i === 0} canMove={canMove} onOpen={open} />
           ))}
         </div>
       </DndContext>
