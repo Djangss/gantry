@@ -30,10 +30,25 @@ const repoPRs = [
   { number: 15, title: "Fix v1 deferred minors", state: "open", url: "https://github.com/Djangss/gantry/pull/15", user: "Djangss", labels: [], isPR: true, isDraft: true, comments: 0, updatedAt: "2026-11-10T11:00:00Z" },
 ];
 
+const proposedIssue = {
+  number: 41, title: "Add keyboard shortcuts to the board", state: "open", user: "Djangss", url: "https://github.com/Djangss/gantry/issues/41",
+  body: "From the brainstorm on board UX.", labels: [{ name: "proposed", color: "fbca04" }], comments: [], pr: null,
+};
+const proposedPR = {
+  number: 42, title: "docs: describe the proposal inbox", state: "open", user: "Djangss", url: "https://github.com/Djangss/gantry/pull/42",
+  body: "Updates docs/design.md.", labels: [{ name: "proposed", color: "fbca04" }], comments: [],
+  pr: { merged: false, draft: false, reviews: [], checks: [] },
+};
+const inboxRow = (i: typeof proposedIssue | typeof proposedPR, isPR: boolean) => ({
+  number: i.number, repo: "Djangss/gantry", title: i.title, state: "open", url: i.url, user: "Djangss", labels: i.labels,
+  isPR, isDraft: false, comments: 0, updatedAt: "2026-11-10T12:00:00Z",
+});
+
 export async function mockApi(page: Page) {
   let patched: unknown = null;
   let commented: unknown = null;
   let watched: { content: string } | null = null;
+  let approved: unknown = null;
   await page.route("**/api/**", async (route) => {
     const req = route.request();
     const p = new URL(req.url()).pathname;
@@ -64,11 +79,25 @@ export async function mockApi(page: Page) {
       commented = req.postDataJSON();
       return json({ id: 2, user: "Djangss", body: "x", createdAt: "2026-11-10T10:00:00Z" }, 201);
     }
+    if (p === "/api/inbox") return json(approved ? [inboxRow(proposedPR, true)] : [inboxRow(proposedIssue, false), inboxRow(proposedPR, true)]);
+    if (p === "/api/repos/Djangss/gantry/issues/41/approve" && req.method() === "POST") {
+      approved = req.postDataJSON();
+      return route.fulfill({ status: 204 });
+    }
+    if (p === "/api/repos/Djangss/gantry/issues/42/approve" && req.method() === "POST")
+      return json({ error: "Head branch was modified. Review and try the merge again.", code: "bad_request" }, 422);
+    if (p === "/api/repos/Djangss/gantry/issues/41") return json(approved ? { ...proposedIssue, labels: [] } : proposedIssue);
+    if (p === "/api/repos/Djangss/gantry/issues/42") return json(proposedPR);
+    if (p === "/api/repos/Djangss/gantry/pulls/42/files")
+      return json([
+        { filename: "docs/design.md", status: "modified", patch: "@@ -1,2 +1,3 @@\n # Design\n-Old line\n+New line\n+Inbox section" },
+        { filename: "docs/inbox.png", status: "added", patch: "" },
+      ]);
     if (p === "/api/repos/Djangss/gantry/issues/7") return json(issue);
     if (p === "/api/links") return json([{ path: "notes/board-ux-ideas.md", title: "Board UX ideas", kind: "note" }]);
     if (p === "/api/repos/Djangss/notes/tree") return json([{ path: "notes/board-ux-ideas.md", type: "blob" }, { path: "drawings/architecture.excalidraw", type: "blob" }]);
     if (p === "/api/repos/Djangss/notes/contents/notes/board-ux-ideas.md") return json({ content: note, sha: "s1" });
     return json({ error: "not mocked: " + p, code: "not_found" }, 404);
   });
-  return { patched: () => patched, commented: () => commented, watched: () => watched };
+  return { patched: () => patched, commented: () => commented, watched: () => watched, approved: () => approved };
 }
