@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/Djangss/gantry/internal/gh"
 )
@@ -170,5 +171,43 @@ func TestInvalidateRescansOnNextLookup(t *testing.T) {
 	x.Lookup(bg, "tok", "o/r#1")
 	if n := src.trees.Load(); n != 2 {
 		t.Fatalf("tree listed %d times, want a rescan after Invalidate", n)
+	}
+}
+
+// slowSource delays Tree so Update calls land while scan reads its snapshot of the files.
+type slowSource struct{ *fakeSource }
+
+func (s slowSource) Tree(ctx context.Context, token, owner, repo, prefix string) ([]gh.TreeEntry, error) {
+	time.Sleep(20 * time.Millisecond)
+	return s.fakeSource.Tree(ctx, token, owner, repo, prefix)
+}
+
+func TestRebuildWithConcurrentUpdate(t *testing.T) {
+	src := newFake()
+	for i := range 200 {
+		src.files[fmt.Sprintf("notes/n%d.md", i)] = "x"
+	}
+	x := New(slowSource{src}, "Djangss", "notes")
+	ctx := context.Background()
+	if err := x.Rebuild(ctx, "tok"); err != nil {
+		t.Fatal(err)
+	}
+	stop, done := make(chan struct{}), make(chan struct{})
+	go func() {
+		defer close(done)
+		for i := 0; ; i++ {
+			select {
+			case <-stop:
+				return
+			default:
+				x.Update(fmt.Sprintf("notes/saved%d.md", i), "sha", "saved")
+			}
+		}
+	}()
+	err := x.Rebuild(ctx, "tok")
+	close(stop)
+	<-done
+	if err != nil {
+		t.Fatal(err)
 	}
 }
