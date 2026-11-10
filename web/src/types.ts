@@ -39,6 +39,7 @@ export type FileData = { content: string; sha: string };
 export type LinkEntry = { path: string; title: string; kind: "note" | "drawing" };
 export type IssueSummary = {
   number: number;
+  repo?: string;
   title: string;
   state: string;
   url: string;
@@ -49,3 +50,5 @@ export type IssueSummary = {
   comments: number;
   updatedAt: string;
 };
+
+export type PRFile = { filename: string; status: string; patch: string };

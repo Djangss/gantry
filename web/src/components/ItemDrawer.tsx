@@ -11,6 +11,8 @@ import { api, errorText, send } from "@/api";
 import LabelChip from "@/components/LabelChip";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import PRChanges from "@/components/PRChanges";
+import ProposalActions from "@/components/ProposalActions";
 import QueryError from "@/components/QueryError";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
@@ -132,10 +134,12 @@ export default function ItemDrawer({ itemRef, onClose }: { itemRef: string; onCl
           {issue.isError && <QueryError error={issue.error} retry={issue.refetch} />}
           {i && (
             <>
+              {r && i.state === "open" && i.labels.some((l) => l.name === "proposed") && <ProposalActions itemRef={itemRef} base={base} isPR={!!i.pr} />}
               {i.pr && <PRStatus pr={i.pr} />}
               <article className="prose prose-sm max-w-none dark:prose-invert">
                 <Markdown remarkPlugins={[remarkGfm]}>{i.body || "_No description._"}</Markdown>
               </article>
+              {r && i.pr && <PRChanges itemRef={itemRef} filesUrl={`/api/repos/${r.owner}/${r.repo}/pulls/${r.number}/files`} />}
               <section className="space-y-2 border-t pt-4">
                 <h3 className="text-[17px] heading-condensed">Notes</h3>
                 {links.isError && <QueryError error={links.error} retry={links.refetch} />}

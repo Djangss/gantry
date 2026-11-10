@@ -12,6 +12,7 @@ A gantry crane lifts cargo and moves it where it needs to go. Gantry does the sa
 - **Issue and PR drawer** with comments, reviews, checks and the notes linked to that issue.
 - **Repo docs, edited in place.** Open any repo's `docs/` folder, edit Markdown with live preview, and each save is a commit.
 - **Notes and drawings** in a private notes repo, linked to issues by `owner/repo#123`.
+- **Proposal inbox.** Agents open issues and doc PRs labelled `proposed`; approve them onto a board (or merge), or reject them, from one Inbox.
 - **Live updates.** Gantry adds its own webhooks to your repos, so an issue edited on GitHub updates the open board and drawer without a reload.
 - **Work is never lost silently.** Drafts survive a crash, and a save that conflicts with a change on GitHub asks you what to keep.
 

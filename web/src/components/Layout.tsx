@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { BookOpen, NotebookText } from "lucide-react";
+import { BookOpen, Inbox, NotebookText } from "lucide-react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
 import { api, errorText, send } from "@/api";
@@ -10,6 +10,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { inboxQuery } from "@/lib/inbox";
 import { useLiveUpdates } from "@/lib/events";
 import { meQuery } from "@/lib/me";
 import { groupRepos, parseRepoName, watchedQueryOptions } from "@/lib/repos";
@@ -35,6 +36,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function Nav() {
   const me = useQuery(meQuery);
+  const inbox = useQuery(inboxQuery);
   const projects = useQuery({ queryKey: ["projects"], queryFn: () => api<Project[]>("/api/projects") });
   const repos = useQuery({ queryKey: ["repos"], queryFn: () => api<Repo[]>("/api/repos") });
   const contributed = useQuery({ queryKey: ["contributed"], queryFn: () => api<Repo[]>("/api/repos/contributed") });
@@ -58,6 +60,18 @@ function Nav() {
   return (
     <nav aria-label="Main" className="flex h-full flex-col gap-5 overflow-y-auto bg-rail px-3 py-4 text-rail-foreground">
       <Brand className="px-2" />
+      <Section title="Review">
+        <NavLink to="/inbox" className={linkClass}>
+          <Inbox aria-hidden className="size-4 shrink-0 text-rail-muted" />
+          Inbox
+          {!!inbox.data?.length && (
+            <span className="ml-auto rounded-sm bg-hazard px-1.5 text-xs font-semibold text-hazard-foreground">
+              {inbox.data.length}
+              <span className="sr-only"> to review</span>
+            </span>
+          )}
+        </NavLink>
+      </Section>
       <Section title="Projects">
         {projects.isPending && <ListSkeleton />}
         {projects.isError && <QueryError className="px-2 text-rail-foreground" error={projects.error} retry={projects.refetch} />}

@@ -1,0 +1,130 @@
+package gh
+
+import (
+	"context"
+	"strings"
+
+	"github.com/google/go-github/v93/github"
+)
+
+type PRFile struct {
+	Filename string `json:"filename"`
+	Status   string `json:"status"`
+	Patch    string `json:"patch"` // empty for binary or very large files
+}
+
+// Proposed lists open issues and PRs labelled "proposed" that login opened, across all repos.
+// Search needs is:issue or is:pr, so it runs once for each.
+// shortcut: first 100 of each; page if the inbox ever holds more.
+func (c *Client) Proposed(ctx context.Context, token, login string) ([]IssueSummary, error) {
+	g, err := c.rest(token)
+	if err != nil {
+		return nil, err
+	}
+	out := []IssueSummary{}
+	for _, kind := range []string{"is:issue", "is:pr"} {
+		res, _, err := g.Search.Issues(ctx, kind+" is:open label:proposed author:"+login,
+			&github.SearchOptions{Sort: "updated", Order: "desc", ListOptions: github.ListOptions{PerPage: 100}})
+		if err != nil {
+			return nil, wrap(err)
+		}
+		for _, x := range res.Issues {
+			it := IssueSummary{Number: x.GetNumber(), Repo: repoFromURL(x.GetRepositoryURL()), Title: x.GetTitle(), State: x.GetState(),
+				URL: x.GetHTMLURL(), User: x.GetUser().GetLogin(), Labels: []Label{}, IsPR: x.IsPullRequest(), IsDraft: x.GetDraft(),
+				Comments: x.GetComments(), UpdatedAt: x.GetUpdatedAt().Time}
+			for _, l := range x.Labels {
+				it.Labels = append(it.Labels, Label{Name: l.GetName(), Color: l.GetColor()})
+			}
+			out = append(out, it)
+		}
+	}
+	return out, nil
+}
+
+// repoFromURL turns ".../repos/owner/repo" into "owner/repo".
+func repoFromURL(u string) string {
+	_, after, _ := strings.Cut(u, "/repos/")
+	return after
+}
+
+// ItemNode returns the GraphQL node id Projects v2 needs, whether the number is a PR, and whether it carries label.
+func (c *Client) ItemNode(ctx context.Context, token, owner, repo string, n int, label string) (string, bool, bool, error) {
+	g, err := c.rest(token)
+	if err != nil {
+		return "", false, false, err
+	}
+	gi, _, err := g.Issues.Get(ctx, owner, repo, n)
+	if err != nil {
+		return "", false, false, wrap(err)
+	}
+	has := false
+	for _, l := range gi.Labels {
+		has = has || l.GetName() == label
+	}
+	return gi.GetNodeID(), gi.IsPullRequest(), has, nil
+}
+
+// RemoveLabel treats a label that is already gone as removed, so a retried approve succeeds.
+func (c *Client) RemoveLabel(ctx context.Context, token, owner, repo string, n int, label string) error {
+	g, err := c.rest(token)
+	if err != nil {
+		return err
+	}
+	if _, err := g.Issues.RemoveLabelForIssue(ctx, owner, repo, n, label); err != nil {
+		if e := wrap(err); e.Status != 404 {
+			return e
+		}
+	}
+	return nil
+}
+
+// Close closes an issue as not planned, or a PR without merging.
+func (c *Client) Close(ctx context.Context, token, owner, repo string, n int, isPR bool) error {
+	g, err := c.rest(token)
+	if err != nil {
+		return err
+	}
+	if isPR {
+		_, _, err = g.PullRequests.Edit(ctx, owner, repo, n, &github.PullRequest{State: github.Ptr("closed")})
+	} else {
+		_, _, err = g.Issues.Update(ctx, owner, repo, n, github.UpdateIssueRequest{State: github.Ptr("closed"), StateReason: github.Ptr("not_planned")})
+	}
+	if err != nil {
+		return wrap(err)
+	}
+	return nil
+}
+
+// Merge squash-merges a PR. GitHub's 409 (stale head) becomes 422 so the API layer passes its message on
+// instead of the generic "file changed on GitHub".
+func (c *Client) Merge(ctx context.Context, token, owner, repo string, n int) error {
+	g, err := c.rest(token)
+	if err != nil {
+		return err
+	}
+	if _, _, err := g.PullRequests.Merge(ctx, owner, repo, n, "", &github.PullRequestOptions{MergeMethod: "squash"}); err != nil {
+		e := wrap(err)
+		if e.Status == 409 {
+			e.Status = 422
+		}
+		return e
+	}
+	return nil
+}
+
+// shortcut: first 100 files; doc PRs are small, page if one ever is not.
+func (c *Client) PRFiles(ctx context.Context, token, owner, repo string, n int) ([]PRFile, error) {
+	g, err := c.rest(token)
+	if err != nil {
+		return nil, err
+	}
+	fs, _, err := g.PullRequests.ListFiles(ctx, owner, repo, n, &github.ListOptions{PerPage: 100})
+	if err != nil {
+		return nil, wrap(err)
+	}
+	out := []PRFile{}
+	for _, f := range fs {
+		out = append(out, PRFile{Filename: f.GetFilename(), Status: f.GetStatus(), Patch: f.GetPatch()})
+	}
+	return out, nil
+}

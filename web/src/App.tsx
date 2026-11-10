@@ -3,6 +3,7 @@ import { createBrowserRouter, RouterProvider } from "react-router";
 import { ApiError } from "@/api";
 import BoardView from "@/components/BoardView";
 import FilesView from "@/components/FilesView";
+import InboxView from "@/components/InboxView";
 import Home from "@/components/Home";
 import Layout from "@/components/Layout";
 import Login from "@/components/Login";
@@ -21,6 +22,7 @@ const router = createBrowserRouter([
     element: <Layout />,
     children: [
       { index: true, element: <Home /> },
+      { path: "inbox", element: <InboxView /> },
       { path: "projects/:id", element: <BoardView /> },
       { path: "files/:owner/:repo", element: <FilesView /> },
       { path: "repos/:owner/:repo", element: <RepoView /> },

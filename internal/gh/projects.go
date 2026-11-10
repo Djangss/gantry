@@ -194,3 +194,13 @@ func (c *Client) MoveItem(ctx context.Context, token, projectID, itemID, fieldID
 	return c.graphql(ctx, token, moveMutation,
 		map[string]any{"project": projectID, "item": itemID, "field": fieldID, "option": optionID}, &r)
 }
+
+const addMutation = `mutation($project: ID!, $content: ID!) {
+  addProjectV2ItemById(input: {projectId: $project, contentId: $content}) { item { id } }
+}`
+
+// AddToProject is idempotent: adding an item already on the board returns the existing item.
+func (c *Client) AddToProject(ctx context.Context, token, projectID, contentID string) error {
+	var r json.RawMessage
+	return c.graphql(ctx, token, addMutation, map[string]any{"project": projectID, "content": contentID}, &r)
+}

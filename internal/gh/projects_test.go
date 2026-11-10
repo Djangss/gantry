@@ -26,6 +26,9 @@ func graphqlFake(t *testing.T, vars *map[string]any) *Client {
 			case strings.Contains(in.Query, "updateProjectV2ItemFieldValue"):
 				*vars = in.Variables
 				fmt.Fprint(w, `{"data":{"updateProjectV2ItemFieldValue":{"projectV2Item":{"id":"I1"}}}}`)
+			case strings.Contains(in.Query, "addProjectV2ItemById"):
+				*vars = in.Variables
+				fmt.Fprint(w, `{"data":{"addProjectV2ItemById":{"item":{"id":"I9"}}}}`)
 			case in.Variables["id"] == "missing":
 				fmt.Fprint(w, `{"data":null,"errors":[{"type":"NOT_FOUND","message":"Could not resolve to a node"}]}`)
 			case strings.Contains(in.Query, "node(id"):
@@ -105,5 +108,15 @@ func TestContributedRepos(t *testing.T) {
 	rs, err := c.Contributed(ctx, "tok")
 	if err != nil || fmt.Sprint(rs) != "[{golang/go false false}]" {
 		t.Fatalf("%v %v", err, rs)
+	}
+}
+
+func TestAddToProject(t *testing.T) {
+	var v map[string]any
+	if err := graphqlFake(t, &v).AddToProject(ctx, "tok", "P1", "I_x"); err != nil {
+		t.Fatal(err)
+	}
+	if v["project"] != "P1" || v["content"] != "I_x" {
+		t.Fatalf("%v", v)
 	}
 }
