@@ -7,6 +7,7 @@ import { api, errorText, send } from "@/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import QueryError from "@/components/QueryError";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { isSubmit, modLabel } from "@/lib/keys";
@@ -93,7 +94,7 @@ export default function ItemDrawer({ itemRef, onClose }: { itemRef: string; onCl
         <div className="space-y-5 px-4 pb-6">
           {!r && <p className="text-destructive">{itemRef} is not an issue reference like owner/repo#12.</p>}
           {issue.isPending && r && <Skeleton className="h-40" />}
-          {issue.isError && <p className="text-destructive">{errorText(issue.error)}</p>}
+          {issue.isError && <QueryError error={issue.error} retry={issue.refetch} />}
           {i && (
             <>
               {i.pr && <PRStatus pr={i.pr} />}
@@ -102,7 +103,7 @@ export default function ItemDrawer({ itemRef, onClose }: { itemRef: string; onCl
               </article>
               <section className="space-y-2 border-t pt-4">
                 <h3 className="text-base heading-condensed">Notes</h3>
-                {links.isError && <p className="text-sm text-destructive">{errorText(links.error)}</p>}
+                {links.isError && <QueryError error={links.error} retry={links.refetch} />}
                 {links.data?.length === 0 && <p className="text-sm text-muted-foreground">Nothing linked yet. Start a note or a drawing for this issue.</p>}
                 <ul className="space-y-1">
                   {links.data?.map((l) => (

@@ -3,6 +3,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router";
 import { api, errorText, send } from "@/api";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import QueryError from "@/components/QueryError";
 import MarkdownEditor from "@/components/MarkdownEditor";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -100,7 +101,7 @@ export default function FilesView() {
         )}
         {error && <p className="text-sm text-destructive">{error}</p>}
         {tree.isPending && <Skeleton className="h-32" />}
-        {tree.isError && <p className="text-sm text-destructive">{errorText(tree.error)}</p>}
+        {tree.isError && <QueryError error={tree.error} retry={tree.refetch} />}
         {tree.data && (
           <Input type="search" aria-label="Filter files" placeholder="Filter files" value={query} onChange={(e) => setQuery(e.target.value)} className="h-8" />
         )}

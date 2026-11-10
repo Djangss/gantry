@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router";
 import { toast } from "sonner";
 import { api, errorText, send } from "@/api";
+import QueryError from "@/components/QueryError";
+import { Skeleton } from "@/components/ui/skeleton";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -42,7 +44,8 @@ function Nav() {
     <nav aria-label="Main" className="flex h-full flex-col gap-4 overflow-y-auto p-3">
       <div className="px-2 text-xl heading-condensed">Gantry</div>
       <Section title="Projects">
-        {projects.isError && <p className="px-2 text-sm text-destructive">{errorText(projects.error)}</p>}
+        {projects.isPending && <ListSkeleton />}
+        {projects.isError && <QueryError className="px-2" error={projects.error} retry={projects.refetch} />}
         {openProjects?.length === 0 && <p className="px-2 text-sm text-muted-foreground">No projects yet. Create one on GitHub.</p>}
         {openProjects?.map((p) => (
           <NavLink key={p.id} to={`/projects/${encodeURIComponent(p.id)}`} className={linkClass}>
@@ -58,7 +61,8 @@ function Nav() {
         </Section>
       )}
       <Section title="Docs">
-        {repos.isError && <p className="px-2 text-sm text-destructive">{errorText(repos.error)}</p>}
+        {repos.isPending && <ListSkeleton />}
+        {repos.isError && <QueryError className="px-2" error={repos.error} retry={repos.refetch} />}
         {repos.data?.map((r) => (
           <NavLink key={r.fullName} to={`/files/${r.fullName}?root=docs`} className={linkClass}>
             {r.fullName}
@@ -75,6 +79,12 @@ function Nav() {
     </nav>
   );
 }
+
+const ListSkeleton = () => (
+  <div aria-hidden className="space-y-1.5 px-2">
+    {[0, 1, 2].map((i) => <Skeleton key={i} className="h-5" />)}
+  </div>
+);
 
 export default function Layout() {
   const location = useLocation();
