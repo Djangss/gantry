@@ -34,3 +34,9 @@ test("previewTitle hides the frontmatter title when the body opens with its own 
   expect(previewTitle("Ideas", "just text")).toBe("Ideas");
   expect(previewTitle("", "text")).toBe("");
 });
+
+test("slugify keeps letters from non-Latin scripts", () => {
+  expect(slugify("Привет, мир")).toBe("привет-мир");
+  expect(slugify("日本語のメモ")).toBe("日本語のメモ");
+  expect(slugify("Ελληνικά 2")).toBe("ελληνικα-2");
+});
