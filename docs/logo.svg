@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Gantry">
+  <rect width="512" height="512" rx="112" fill="#3b434b"/>
+  <!-- rocket, held by the gantry arms -->
+  <path d="M342 120c22 22 30 52 30 84v196h-60V204c0-32 8-62 30-84z" fill="#9aa5ae"/>
+  <path d="M312 352l-22 48h22zM372 352l22 48h-22z" fill="#9aa5ae"/>
+  <g fill="none" stroke="#f5a623" stroke-linecap="square" stroke-linejoin="miter">
+    <!-- tower rails -->
+    <path d="M136 400V96M220 400V96" stroke-width="18"/>
+    <!-- X bracing, four bays -->
+    <path d="M136 96l84 76M220 96l-84 76M136 172l84 76M220 172l-84 76M136 248l84 76M220 248l-84 76M136 324l84 76M220 324l-84 76" stroke-width="9"/>
+    <path d="M136 172h84M136 248h84M136 324h84M128 96h100" stroke-width="10"/>
+    <!-- swing arms to the rocket -->
+    <path d="M220 190h92M220 290h92" stroke-width="14"/>
+    <path d="M220 236l60-46M220 336l60-46" stroke-width="8"/>
+  </g>
+  <!-- launch platform -->
+  <rect x="96" y="400" width="320" height="26" rx="4" fill="#f5a623"/>
+</svg>
