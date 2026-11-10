@@ -2,6 +2,7 @@ package notes
 
 import (
 	"context"
+	"crypto/sha1"
 	"fmt"
 	"sync/atomic"
 	"testing"
@@ -13,22 +14,27 @@ type fakeSource struct {
 	files map[string]string
 	fail  map[string]error
 	trees atomic.Int32
+	gets  atomic.Int32
 }
+
+// blobSHA stands in for git's blob hash: it changes exactly when the content does.
+func blobSHA(content string) string { return fmt.Sprintf("%x", sha1.Sum([]byte(content))) }
 
 func (f *fakeSource) Tree(ctx context.Context, token, owner, repo, prefix string) ([]gh.TreeEntry, error) {
 	f.trees.Add(1)
 	out := []gh.TreeEntry{{Path: "notes", Type: "tree"}}
 	for p := range f.files {
-		out = append(out, gh.TreeEntry{Path: p, Type: "blob"})
+		out = append(out, gh.TreeEntry{Path: p, Type: "blob", SHA: blobSHA(f.files[p])})
 	}
 	return out, nil
 }
 
 func (f *fakeSource) GetContents(ctx context.Context, token, owner, repo, path string) (*gh.File, error) {
+	f.gets.Add(1)
 	if err := f.fail[path]; err != nil {
 		return nil, err
 	}
-	return &gh.File{Content: f.files[path], SHA: "x"}, nil
+	return &gh.File{Content: f.files[path], SHA: blobSHA(f.files[path])}, nil
 }
 
 func newFake() *fakeSource {
@@ -69,8 +75,8 @@ func TestLookupBuildsOnce(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	x := New(newFake(), "Djangss", "notes")
 	x.Lookup(context.Background(), "tok", "o/r#1")
-	x.Update("notes/ideas.md", "---\nlinks: [o/r#9]\n---\n")
-	x.Update("README.md", "---\nlinks: [o/r#9]\n---\n")
+	x.Update("notes/ideas.md", "s9", "---\nlinks: [o/r#9]\n---\n")
+	x.Update("README.md", "s9", "---\nlinks: [o/r#9]\n---\n")
 	old, _ := x.Lookup(context.Background(), "tok", "Djangss/cap#3")
 	now, _ := x.Lookup(context.Background(), "tok", "o/r#9")
 	if len(old) != 1 || fmt.Sprint(now) != "[{notes/ideas.md ideas note}]" {
@@ -106,6 +112,52 @@ func TestLookupFailsOnUpstreamError(t *testing.T) {
 	src.fail = map[string]error{"notes/plain.md": &gh.Error{Status: 502, Message: "Bad Gateway"}}
 	if _, err := New(src, "Djangss", "notes").Lookup(context.Background(), "tok", "o/r#1"); err == nil {
 		t.Fatal("a transient 5xx must fail the build, not drop the file from the index")
+	}
+}
+
+func TestRescanFetchesOnlyChangedFiles(t *testing.T) {
+	src := newFake()
+	x := New(src, "Djangss", "notes")
+	bg := context.Background()
+	x.Lookup(bg, "tok", "o/r#1")
+	if n := src.gets.Load(); n != 3 { // ideas.md, plain.md, flow.excalidraw
+		t.Fatalf("first scan fetched %d files", n)
+	}
+
+	src.gets.Store(0)
+	if err := x.Rebuild(bg, "tok"); err != nil || src.gets.Load() != 0 {
+		t.Fatalf("unchanged rescan fetched %d files (err %v)", src.gets.Load(), err)
+	}
+
+	src.files["notes/plain.md"] = "---\nlinks: [o/r#1]\n---\n"           // changed
+	src.files["notes/new.md"] = "---\ntitle: New\nlinks: [o/r#1]\n---\n" // added
+	delete(src.files, "drawings/flow.excalidraw")                        // deleted
+	src.gets.Store(0)
+	x.Rebuild(bg, "tok")
+	if n := src.gets.Load(); n != 2 {
+		t.Fatalf("rescan fetched %d files, want the changed and the added one", n)
+	}
+	got, _ := x.Lookup(bg, "tok", "o/r#1")
+	if fmt.Sprint(got) != "[{notes/new.md New note} {notes/plain.md plain note}]" {
+		t.Fatalf("got %v", got)
+	}
+	if got, _ := x.Lookup(bg, "tok", "djangss/cap#3"); fmt.Sprint(got) != "[{notes/ideas.md Ideas note}]" {
+		t.Fatalf("deleted drawing still indexed: %v", got)
+	}
+}
+
+func TestUpdateRecordsSHA(t *testing.T) {
+	src := newFake()
+	x := New(src, "Djangss", "notes")
+	bg := context.Background()
+	x.Lookup(bg, "tok", "o/r#1")
+	content := "---\nlinks: [o/r#5]\n---\n"
+	src.files["notes/plain.md"] = content
+	x.Update("notes/plain.md", blobSHA(content), content) // what the save handler does
+	src.gets.Store(0)
+	x.Rebuild(bg, "tok")
+	if n := src.gets.Load(); n != 0 {
+		t.Fatalf("a file saved through Gantry was fetched again (%d)", n)
 	}
 }
 
