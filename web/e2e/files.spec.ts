@@ -47,3 +47,32 @@ test("Ctrl+Enter posts a comment", async ({ page }) => {
   await box.press("Control+Enter");
   await expect.poll(api.commented).toEqual({ body: "Looks good" });
 });
+
+test("narrow screens toggle between editor and preview", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockApi(page);
+  await page.goto(notePage);
+  const preview = page.getByRole("article");
+  await expect(page.locator(".cm-content")).toBeVisible();
+  await expect(preview).toBeHidden();
+  await page.getByRole("button", { name: "Preview" }).click();
+  await expect(preview.getByRole("listitem").first()).toHaveText("Compact cards");
+  await expect(page.locator(".cm-content")).toBeHidden();
+  await page.getByRole("button", { name: "Edit" }).click();
+  await expect(page.locator(".cm-content")).toBeVisible();
+});
+
+test("a failed sidebar list can be retried", async ({ page }) => {
+  await mockApi(page);
+  let calls = 0;
+  await page.route("**/api/repos", (route) =>
+    ++calls === 1
+      ? route.fulfill({ status: 403, json: { error: "GitHub refused the request", code: "forbidden" } })
+      : route.fulfill({ json: [{ fullName: "Djangss/gantry", private: false }] }),
+  );
+  await page.goto("/");
+  const nav = page.getByRole("navigation", { name: "Main" });
+  await expect(nav).toContainText("GitHub refused the request");
+  await nav.getByRole("button", { name: "Retry" }).click();
+  await expect(nav.getByRole("link", { name: "Djangss/gantry" })).toBeVisible();
+});
