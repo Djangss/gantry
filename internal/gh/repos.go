@@ -76,6 +76,7 @@ type Repo struct {
 type TreeEntry struct {
 	Path string `json:"path"`
 	Type string `json:"type"` // "blob" or "tree"
+	SHA  string `json:"sha"`  // git object id; changes exactly when the content does
 }
 
 type File struct {
@@ -277,7 +278,7 @@ func (c *Client) Tree(ctx context.Context, token, owner, repo, prefix string) ([
 	for _, x := range t.Entries {
 		p := x.GetPath()
 		if prefix == "" || p == prefix || strings.HasPrefix(p, prefix+"/") {
-			out = append(out, TreeEntry{Path: p, Type: x.GetType()})
+			out = append(out, TreeEntry{Path: p, Type: x.GetType(), SHA: x.GetSHA()})
 		}
 	}
 	return out, nil

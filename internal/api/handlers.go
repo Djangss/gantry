@@ -145,7 +145,7 @@ func (s *Server) putContents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if strings.EqualFold(r.PathValue("owner")+"/"+r.PathValue("repo"), s.cfg.NotesRepo) {
-		s.links.Update(path, in.Content)
+		s.links.Update(path, sha, in.Content)
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"sha": sha})
 }

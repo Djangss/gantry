@@ -24,7 +24,7 @@ type Source interface {
 }
 
 // Index maps issue refs to the notes and drawings that link them.
-// shortcut: built by a full scan on first use; switch to a committed index.json if scans get slow.
+// Built by a scan on first use; later scans re-read only files whose blob SHA changed.
 type Index struct {
 	src         Source
 	owner, repo string
@@ -37,6 +37,7 @@ type Index struct {
 type indexed struct {
 	entry Entry
 	refs  []string // lower-cased
+	sha   string   // blob SHA the entry was parsed from
 }
 
 func New(src Source, owner, repo string) *Index {
@@ -53,7 +54,7 @@ func kind(path string) string {
 	return ""
 }
 
-func parse(path, content string) indexed {
+func parse(path, sha, content string) indexed {
 	k := kind(path)
 	var title string
 	var refs []string
@@ -69,7 +70,7 @@ func parse(path, content string) indexed {
 	for i, r := range refs {
 		lower[i] = strings.ToLower(r)
 	}
-	return indexed{entry: Entry{Path: path, Title: title, Kind: k}, refs: lower}
+	return indexed{entry: Entry{Path: path, Title: title, Kind: k}, refs: lower, sha: sha}
 }
 
 func (x *Index) Rebuild(ctx context.Context, token string) error {
@@ -83,6 +84,9 @@ func (x *Index) scan(ctx context.Context, token string) error {
 	if err != nil {
 		return err
 	}
+	x.mu.Lock()
+	old := x.files
+	x.mu.Unlock()
 	files := map[string]indexed{}
 	var (
 		wg       sync.WaitGroup
@@ -92,6 +96,10 @@ func (x *Index) scan(ctx context.Context, token string) error {
 	sem := make(chan struct{}, 8)
 	for _, e := range tree {
 		if e.Type != "blob" || kind(e.Path) == "" {
+			continue
+		}
+		if prev, ok := old[e.Path]; ok && e.SHA != "" && prev.sha == e.SHA {
+			files[e.Path] = prev // unchanged since it was parsed
 			continue
 		}
 		wg.Go(func() {
@@ -110,7 +118,7 @@ func (x *Index) scan(ctx context.Context, token string) error {
 				}
 				return
 			}
-			files[e.Path] = parse(e.Path, f.Content)
+			files[e.Path] = parse(e.Path, e.SHA, f.Content)
 		})
 	}
 	wg.Wait()
@@ -158,13 +166,13 @@ func (x *Index) Lookup(ctx context.Context, token, ref string) ([]Entry, error) 
 }
 
 // Update re-parses one saved file; before the first scan it does nothing, since the scan will read it.
-func (x *Index) Update(path, content string) {
+func (x *Index) Update(path, sha, content string) {
 	if kind(path) == "" {
 		return
 	}
 	x.mu.Lock()
 	defer x.mu.Unlock()
 	if x.built {
-		x.files[path] = parse(path, content)
+		x.files[path] = parse(path, sha, content)
 	}
 }
