@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router";
+import { createBrowserRouter, RouterProvider } from "react-router";
 import { ApiError } from "@/api";
 import BoardView from "@/components/BoardView";
 import FilesView from "@/components/FilesView";
@@ -14,19 +14,22 @@ const queryClient = new QueryClient({
   },
 });
 
+const router = createBrowserRouter([
+  { path: "/login", element: <Login /> },
+  {
+    element: <Layout />,
+    children: [
+      { index: true, element: <Home /> },
+      { path: "projects/:id", element: <BoardView /> },
+      { path: "files/:owner/:repo", element: <FilesView /> },
+    ],
+  },
+]);
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route element={<Layout />}>
-            <Route index element={<Home />} />
-            <Route path="projects/:id" element={<BoardView />} />
-            <Route path="files/:owner/:repo" element={<FilesView />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+      <RouterProvider router={router} />
       <Toaster />
     </QueryClientProvider>
   );
