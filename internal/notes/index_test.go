@@ -100,3 +100,11 @@ func TestLookupFailsOnRateLimit(t *testing.T) {
 		t.Fatal("rate limit mid-scan must fail the build, not leave a partial index")
 	}
 }
+
+func TestLookupFailsOnUpstreamError(t *testing.T) {
+	src := newFake()
+	src.fail = map[string]error{"notes/plain.md": &gh.Error{Status: 502, Message: "Bad Gateway"}}
+	if _, err := New(src, "Djangss", "notes").Lookup(context.Background(), "tok", "o/r#1"); err == nil {
+		t.Fatal("a transient 5xx must fail the build, not drop the file from the index")
+	}
+}

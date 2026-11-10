@@ -73,7 +73,7 @@ export default function DrawingEditor({ owner, repo, path, message }: Props) {
           theme={dark ? "dark" : "light"}
           onChange={(elements, appState, files) => {
             // Serialize only when something saved to the file changed, not on every pointer move.
-            const fp = `${mountKey}|${getSceneVersion(elements)}|${appState.viewBackgroundColor}|${appState.gridModeEnabled}|${Object.keys(files).length}`;
+            const fp = `${mountKey}|${getSceneVersion(elements)}|${appState.viewBackgroundColor}|${appState.gridModeEnabled}|${appState.gridSize}|${appState.gridStep}|${Object.keys(files).length}`;
             if (fp === seen.current) return;
             seen.current = fp;
             onScene(serializeAsJSON(elements, appState, files, "local"));

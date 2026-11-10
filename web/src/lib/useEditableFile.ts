@@ -11,7 +11,8 @@ export function useEditableFile(owner: string, repo: string, path: string, messa
   const qc = useQueryClient();
   const file = useQuery(fileQueryOptions(owner, repo, path));
   const [edited, setEdited] = useState<string | null>(null);
-  const [sha, setSha] = useState("");
+  // A ref, not state: a save right after another must see the new sha before the next render.
+  const sha = useRef("");
   const [status, setStatus] = useState("");
   const [conflict, setConflict] = useState(false);
   const [draftOffer, setDraftOffer] = useState<string | null>(null);
@@ -21,7 +22,7 @@ export function useEditableFile(owner: string, repo: string, path: string, messa
 
   useEffect(() => {
     if (!file.data) return;
-    setSha(file.data.sha);
+    sha.current = file.data.sha;
     const d = loadDraft(key);
     setDraftOffer(d !== null && d !== file.data.content ? d : null);
   }, [file.data, key]);
@@ -50,6 +51,7 @@ export function useEditableFile(owner: string, repo: string, path: string, messa
   }, [key]);
 
   function saved(newSha: string, savedValue: string) {
+    sha.current = newSha;
     clearDraft(key);
     qc.setQueryData<FileData>(["file", key], { content: savedValue, sha: newSha });
     setEdited((cur) => afterSave(cur, savedValue));
@@ -65,7 +67,7 @@ export function useEditableFile(owner: string, repo: string, path: string, messa
       const v = value;
       setStatus("Saving…");
       try {
-        const r = await saveFile(owner, repo, path, v, sha, message);
+        const r = await saveFile(owner, repo, path, v, sha.current, message);
         if (r.ok) saved(r.sha, v);
         else {
           setConflict(true);

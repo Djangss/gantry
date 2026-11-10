@@ -124,10 +124,11 @@ func (x *Index) scan(ctx context.Context, token string) error {
 }
 
 // skippable reports whether one file's read error should not fail the whole scan.
-// Rate limits and bad tokens still fail it, so the index is never built from a partial view.
+// Only a file GitHub refuses for that file alone is skipped; rate limits, bad tokens and
+// upstream failures fail the scan, so the index is never built from a partial view.
 func skippable(err error) bool {
 	var e *gh.Error
-	return errors.As(err, &e) && !e.RateLimited && e.Status != 401 && e.Status != 0
+	return errors.As(err, &e) && !e.RateLimited && (e.Status == 400 || e.Status == 403 || e.Status == 404 || e.Status == 422)
 }
 
 func (x *Index) Lookup(ctx context.Context, token, ref string) ([]Entry, error) {

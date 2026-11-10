@@ -39,4 +39,6 @@ test("slugify keeps letters from non-Latin scripts", () => {
   expect(slugify("Привет, мир")).toBe("привет-мир");
   expect(slugify("日本語のメモ")).toBe("日本語のメモ");
   expect(slugify("Ελληνικά 2")).toBe("ελληνικα-2");
+  expect(slugify("हिन्दी नोट")).toBe("हिन्दी-नोट");
+  expect(slugify("İstanbul")).toBe("istanbul");
 });
