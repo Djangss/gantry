@@ -205,6 +205,9 @@ func (s *Server) syncHooks(w http.ResponseWriter, r *http.Request) {
 	wg.Wait()
 	slices.Sort(res.Added)
 	slices.Sort(res.Failed)
-	s.sync.at, s.sync.last = time.Now(), res
+	s.sync.last = res
+	if len(res.Failed) == 0 { // retry failed repos on the next call, not after the window
+		s.sync.at = time.Now()
+	}
 	writeJSON(w, http.StatusOK, res)
 }
