@@ -11,6 +11,7 @@ import (
 
 type fakeSource struct {
 	files map[string]string
+	fail  map[string]error
 	trees atomic.Int32
 }
 
@@ -24,6 +25,9 @@ func (f *fakeSource) Tree(ctx context.Context, token, owner, repo, prefix string
 }
 
 func (f *fakeSource) GetContents(ctx context.Context, token, owner, repo, path string) (*gh.File, error) {
+	if err := f.fail[path]; err != nil {
+		return nil, err
+	}
 	return &gh.File{Content: f.files[path], SHA: "x"}, nil
 }
 
@@ -71,5 +75,28 @@ func TestUpdate(t *testing.T) {
 	now, _ := x.Lookup(context.Background(), "tok", "o/r#9")
 	if len(old) != 1 || fmt.Sprint(now) != "[{notes/ideas.md ideas note}]" {
 		t.Fatalf("old %v now %v", old, now)
+	}
+}
+
+func TestLookupSkipsUnreadableFile(t *testing.T) {
+	src := newFake()
+	src.files["notes/broken.md"] = ""
+	src.fail = map[string]error{"notes/broken.md": &gh.Error{Status: 404, Message: "Not Found"}}
+	x := New(src, "Djangss", "notes")
+	got, err := x.Lookup(context.Background(), "tok", "Djangss/cap#3")
+	if err != nil || len(got) != 2 {
+		t.Fatalf("want 2 entries despite unreadable file, got %v %v", err, got)
+	}
+	x.Lookup(context.Background(), "tok", "Djangss/cap#3")
+	if n := src.trees.Load(); n != 1 {
+		t.Fatalf("index not kept: tree listed %d times", n)
+	}
+}
+
+func TestLookupFailsOnRateLimit(t *testing.T) {
+	src := newFake()
+	src.fail = map[string]error{"notes/plain.md": &gh.Error{Status: 403, RateLimited: true}}
+	if _, err := New(src, "Djangss", "notes").Lookup(context.Background(), "tok", "o/r#1"); err == nil {
+		t.Fatal("rate limit mid-scan must fail the build, not leave a partial index")
 	}
 }

@@ -2,6 +2,8 @@ package notes
 
 import (
 	"context"
+	"errors"
+	"log/slog"
 	pathpkg "path"
 	"slices"
 	"strings"
@@ -99,6 +101,10 @@ func (x *Index) scan(ctx context.Context, token string) error {
 			mu.Lock()
 			defer mu.Unlock()
 			if err != nil {
+				if skippable(err) {
+					slog.Warn("notes index: skipping unreadable file", "path", e.Path, "err", err)
+					return
+				}
 				if firstErr == nil {
 					firstErr = err
 				}
@@ -115,6 +121,13 @@ func (x *Index) scan(ctx context.Context, token string) error {
 	x.files, x.built = files, true
 	x.mu.Unlock()
 	return nil
+}
+
+// skippable reports whether one file's read error should not fail the whole scan.
+// Rate limits and bad tokens still fail it, so the index is never built from a partial view.
+func skippable(err error) bool {
+	var e *gh.Error
+	return errors.As(err, &e) && !e.RateLimited && e.Status != 401 && e.Status != 0
 }
 
 func (x *Index) Lookup(ctx context.Context, token, ref string) ([]Entry, error) {
