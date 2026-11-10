@@ -36,7 +36,7 @@ export const noteTemplate = (title: string, links: string[]) =>
   `---\ntitle: ${title}\nlinks: [${links.join(", ")}]\n---\n\n`;
 
 export const slugify = (s: string) =>
-  s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") ||
+  s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").normalize("NFC").replace(/[^\p{L}\p{M}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "") ||
   "untitled";
 
 // The preview shows the frontmatter title unless the body already opens with an H1.

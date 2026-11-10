@@ -3,21 +3,20 @@ import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router";
 import { api, errorText, send } from "@/api";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import QueryError from "@/components/QueryError";
 import MarkdownEditor from "@/components/MarkdownEditor";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { emptyDrawing } from "@/lib/drawing";
-import { saveFile } from "@/lib/files";
+import { saveFile, visibleFiles } from "@/lib/files";
 import { noteTemplate, slugify } from "@/lib/frontmatter";
 import { meQuery } from "@/lib/me";
 import { cn } from "@/lib/utils";
 import type { TreeEntry } from "@/types";
 
 const DrawingEditor = lazy(() => import("@/components/DrawingEditor"));
-
-const editable = (p: string) => p.endsWith(".md") || p.endsWith(".excalidraw");
 
 export default function FilesView() {
   const { owner = "", repo = "" } = useParams();
@@ -34,6 +33,7 @@ export default function FilesView() {
   const [error, setError] = useState("");
   const [naming, setNaming] = useState<{ kind: "note" | "drawing"; link?: string } | null>(null);
   const [name, setName] = useState("");
+  const [query, setQuery] = useState("");
 
   const open = (p: string) => {
     setError("");
@@ -82,7 +82,7 @@ export default function FilesView() {
     }
   }
 
-  const files = (tree.data ?? []).filter((e) => e.type === "blob" && editable(e.path));
+  const files = visibleFiles(tree.data ?? [], query);
   const message = `${isNotes ? "notes" : "docs"}: update ${path}`;
 
   return (
@@ -101,10 +101,17 @@ export default function FilesView() {
         )}
         {error && <p className="text-sm text-destructive">{error}</p>}
         {tree.isPending && <Skeleton className="h-32" />}
-        {tree.isError && <p className="text-sm text-destructive">{errorText(tree.error)}</p>}
+        {tree.isError && <QueryError error={tree.error} retry={tree.refetch} />}
+        {tree.data && (
+          <Input type="search" aria-label="Filter files" placeholder="Filter files" value={query} onChange={(e) => setQuery(e.target.value)} className="h-8" />
+        )}
         {tree.data && files.length === 0 && (
           <p className="text-sm text-muted-foreground">
-            {isNotes ? "No notes yet. Create one above." : `No Markdown files${root ? ` in ${root}/` : ""}.`}
+            {query.trim()
+              ? `No files match "${query.trim()}".`
+              : isNotes
+                ? "No notes yet. Create one above."
+                : `No Markdown files${root ? ` in ${root}/` : ""}.`}
           </p>
         )}
         <ul className="space-y-0.5">

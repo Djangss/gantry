@@ -1,11 +1,12 @@
-import { Excalidraw, serializeAsJSON } from "@excalidraw/excalidraw";
+import { Excalidraw, getSceneVersion, serializeAsJSON } from "@excalidraw/excalidraw";
 import "@excalidraw/excalidraw/index.css";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { errorText } from "@/api";
 import FileBar from "@/components/FileBar";
+import QueryError from "@/components/QueryError";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { drawingMountKey, parseDrawing, sceneEdit, withLinks } from "@/lib/drawing";
+import { useDark } from "@/lib/theme";
 import { useEditableFile } from "@/lib/useEditableFile";
 
 type Props = { owner: string; repo: string; path: string; message: string };
@@ -20,6 +21,8 @@ export default function DrawingEditor({ owner, repo, path, message }: Props) {
   const [links, setLinks] = useState("");
   const linksRef = useRef("");
   const base = useRef<{ key: string; json: string } | null>(null);
+  const seen = useRef(""); // cheap scene fingerprint; onChange also fires on pointer moves and scrolls
+  const dark = useDark();
 
   // After a save the file holds our own serialization, so it becomes the new "nothing to save" baseline.
   const savedSha = f.file.data?.sha;
@@ -34,7 +37,7 @@ export default function DrawingEditor({ owner, repo, path, message }: Props) {
   }, [initial]);
 
   if (f.file.isPending) return <Skeleton className="m-4 h-96" />;
-  if (f.file.isError) return <p className="p-4 text-destructive">{errorText(f.file.error)}</p>;
+  if (f.file.isError) return <QueryError className="p-4" error={f.file.error} retry={f.file.refetch} />;
   if (!initial)
     return <p className="p-4 text-destructive">{path} is not valid Excalidraw JSON. Gantry won't open it, so it can't be overwritten by mistake.</p>;
 
@@ -56,7 +59,6 @@ export default function DrawingEditor({ owner, repo, path, message }: Props) {
     f.setContent(withLinks(f.value, linkList(v)));
   }
 
-  const dark = document.documentElement.classList.contains("dark");
   return (
     <div className="flex h-full flex-col">
       <FileBar f={f} path={path} />
@@ -69,7 +71,13 @@ export default function DrawingEditor({ owner, repo, path, message }: Props) {
           key={mountKey}
           initialData={initial as never}
           theme={dark ? "dark" : "light"}
-          onChange={(elements, appState, files) => onScene(serializeAsJSON(elements, appState, files, "local"))}
+          onChange={(elements, appState, files) => {
+            // Serialize only when something saved to the file changed, not on every pointer move.
+            const fp = `${mountKey}|${getSceneVersion(elements)}|${appState.viewBackgroundColor}|${appState.gridModeEnabled}|${appState.gridSize}|${appState.gridStep}|${Object.keys(files).length}`;
+            if (fp === seen.current) return;
+            seen.current = fp;
+            onScene(serializeAsJSON(elements, appState, files, "local"));
+          }}
         />
       </div>
     </div>
