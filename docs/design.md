@@ -1,0 +1,78 @@
+# Gantry design direction
+
+A launch gantry is the steel structure that holds a rocket upright, feeds it and keeps it
+in check until it leaves. Gantry does the same for projects. The interface borrows from
+launch-pad hardware: painted steel, poured concrete, safety-yellow markings and green
+"go" lights. It doesn't use space-opera imagery: no stars, gradients or glow.
+
+## Principles
+
+- **Structure first.** Columns, panes and the sidebar read like the levels of a tower:
+  flat panels, thin borders, small radii. Hierarchy comes from weight and width, not shadows.
+- **Yellow means "act here".** Safety yellow is reserved for the thing you're touching
+  (drop targets, focus rings, the primary action in dark mode). It never appears as decoration.
+- **Green means done.** `--go` marks completed work: the Done column, passing checks,
+  approved reviews.
+- **Dense, calm, legible.** It's a daily tool: 14px UI text, 13px card text, compact
+  padding, nothing animated unless you caused it.
+- **Identifiers are code.** Issue refs (`owner/repo#12`), paths and SHAs use the mono face.
+  Labels and prose never do.
+
+## Palette
+
+| Token | Light | Dark | Role |
+|---|---|---|---|
+| `--background` | `#eef0ee` concrete | `#151b21` night pad | app canvas |
+| `--card` / `--popover` | `#fbfcfb` | `#1d252d` | cards, drawer, menus |
+| `--foreground` / `--primary` (light) | `#1c2530` steel ink | `#e6eaec` | text, primary buttons (light) |
+| `--primary` (dark) | — | `#f2c230` safety yellow | primary buttons (dark) |
+| `--muted-foreground` | `#566573` girder grey | `#94a2ae` | secondary text |
+| `--border` | `#cfd6d3` | `#2e3944` | panel edges |
+| `--ring` | `#d4a514` | `#f2c230` | keyboard focus |
+| `--hazard` | `#f2c230` | `#f2c230` | drop targets, "act here" |
+| `--go` | `#2f8f5b` | `#4cb37b` | done, passing, approved |
+| `--destructive` | `#c8402f` abort red | `#e5604d` | failures, overwrite |
+
+GitHub label colours are the only raw hex values allowed in components; they come from the API.
+
+## Type
+
+- **Archivo Variable** for everything in the UI. Its width axis carries hierarchy: page and
+  column titles use the `heading-condensed` utility (78% width, weight 650), body stays at 100%.
+- **Martian Mono Variable** for identifiers only: refs, file paths, commit messages.
+- Scale: 12 / 13 / 14 / 16 / 20 / 28 px. Sentence case everywhere. No all-caps labels.
+
+## Layout and anatomy
+
+```
+┌ sidebar 16rem ┬──────────────────────────────────────────────┐
+│ Gantry        │ Board title (condensed 20px)                 │
+│ Projects      │ ┌ Todo 3 ┐ ┌ In progress 1 ┐ ┌ Done 4 ●go ┐  │
+│  · v1         │ │ card   │ │ card          │ │ card       │  │
+│ Notes         │ │ card   │ │               │ │            │  │
+│ Docs          │ └────────┘ └───────────────┘ └────────────┘  │
+│ login  Sign out                                              │
+└───────────────┴──────────────────────────────────────────────┘
+```
+
+- **Column:** a `bg-muted/60` panel, 18rem wide, 4px radius. The header has the condensed name
+  and a plain count. The Done column (an option named done/shipped/closed) shows a `--go` dot.
+- **Card:** a `bg-card` panel with a 1px border, no shadow at rest. The title is 13px medium,
+  the ref is in mono 11px, labels are outline badges with the GitHub colour as border.
+  While dragging, the card lifts with a single shadow.
+- **Drop target (signature):** the hovered column gets the `clearance` utility. It shows hazard
+  stripes and a yellow outline, like a pad being cleared for launch. This is the one bold
+  element in the app.
+- **Drawer:** a right sheet, max 36rem. Title, then a line of plain metadata, then the body.
+  Notes and comments are separated by borders, not cards inside cards.
+- **Editor:** source on the left, preview on the right (≥ lg). The file bar is a single row
+  holding the path in mono, the save status and the Save button.
+
+## Never do
+
+- Gradients, glows, starfields, or rocket emoji.
+- Shadows on resting cards, or cards nested inside cards.
+- Middle-dot meta strings (`a · b · c`); use separate spans with spacing.
+- All-caps or tracked-out eyebrow labels above headings.
+- Yellow as decoration, or more than one yellow element in view at rest.
+- `→` appended to buttons or links.
