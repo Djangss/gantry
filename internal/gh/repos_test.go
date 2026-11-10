@@ -194,12 +194,12 @@ func TestPutContentsCreateInvalidIsNotConflict(t *testing.T) {
 func TestTree(t *testing.T) {
 	c := fake(t, map[string]http.HandlerFunc{
 		"GET /repos/o/r":                    body(`{"default_branch":"main"}`),
-		"GET /repos/o/r/git/trees/main":     body(`{"tree":[{"path":"docs","type":"tree"},{"path":"docs/a.md","type":"blob"},{"path":"docsx/b.md","type":"blob"},{"path":"README.md","type":"blob"}]}`),
+		"GET /repos/o/r/git/trees/main":     body(`{"tree":[{"path":"docs","type":"tree","sha":"t1"},{"path":"docs/a.md","type":"blob","sha":"b1"},{"path":"docsx/b.md","type":"blob"},{"path":"README.md","type":"blob"}]}`),
 		"GET /repos/o/empty":                body(`{"default_branch":"main"}`),
 		"GET /repos/o/empty/git/trees/main": func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(409) },
 	})
 	tr, err := c.Tree(ctx, "tok", "o", "r", "docs")
-	if err != nil || fmt.Sprint(tr) != "[{docs tree} {docs/a.md blob}]" {
+	if err != nil || fmt.Sprint(tr) != "[{docs tree t1} {docs/a.md blob b1}]" {
 		t.Fatalf("%v %v", err, tr)
 	}
 	tr, err = c.Tree(ctx, "tok", "o", "empty", "")
