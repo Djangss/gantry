@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -28,7 +29,7 @@ func body(s string) http.HandlerFunc {
 
 func TestReposPaginates(t *testing.T) {
 	c := fake(t, map[string]http.HandlerFunc{"GET /user/repos": func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Query().Get("affiliation") != "owner" {
+		if r.URL.Query().Get("affiliation") != "owner,collaborator,organization_member" {
 			t.Errorf("query %v", r.URL.Query())
 		}
 		if r.URL.Query().Get("page") == "2" {
@@ -239,5 +240,26 @@ func TestPutContentsEscapesPath(t *testing.T) {
 	}
 	if got != "/repos/o/r/contents/docs/C#.md" {
 		t.Fatalf("server saw path %q", got)
+	}
+}
+
+func TestRepoIssuesFiltersKind(t *testing.T) {
+	var q url.Values
+	c := fake(t, map[string]http.HandlerFunc{"GET /repos/o/r/issues": func(w http.ResponseWriter, r *http.Request) {
+		q = r.URL.Query()
+		fmt.Fprint(w, `[
+ {"number":5,"title":"Bug","state":"open","html_url":"https://github.com/o/r/issues/5","user":{"login":"a"},"labels":[{"name":"bug","color":"d73a4a"}],"comments":2,"updated_at":"2026-11-10T10:00:00Z"},
+ {"number":6,"title":"Fix","state":"open","html_url":"https://github.com/o/r/pull/6","user":{"login":"b"},"labels":[],"draft":true,"pull_request":{"url":"x"},"updated_at":"2026-11-09T10:00:00Z"}]`)
+	}})
+	is, err := c.RepoIssues(ctx, "tok", "o", "r", "closed", "issue")
+	if err != nil || len(is) != 1 || is[0].Number != 5 || is[0].IsPR || len(is[0].Labels) != 1 || is[0].Comments != 2 || is[0].User != "a" {
+		t.Fatalf("issues: %v %+v", err, is)
+	}
+	if q.Get("state") != "closed" || q.Get("sort") != "updated" {
+		t.Fatalf("query %v", q)
+	}
+	prs, _ := c.RepoIssues(ctx, "tok", "o", "r", "open", "pr")
+	if len(prs) != 1 || !prs[0].IsPR || !prs[0].IsDraft || prs[0].Labels == nil {
+		t.Fatalf("prs: %+v", prs)
 	}
 }

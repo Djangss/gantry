@@ -54,6 +54,20 @@ type Issue struct {
 	PR       *PR       `json:"pr"`
 }
 
+// IssueSummary is one row of a repo's issue or pull request list.
+type IssueSummary struct {
+	Number    int       `json:"number"`
+	Title     string    `json:"title"`
+	State     string    `json:"state"`
+	URL       string    `json:"url"`
+	User      string    `json:"user"`
+	Labels    []Label   `json:"labels"`
+	IsPR      bool      `json:"isPR"`
+	IsDraft   bool      `json:"isDraft"`
+	Comments  int       `json:"comments"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
 type Repo struct {
 	FullName string `json:"fullName"`
 	Private  bool   `json:"private"`
@@ -108,7 +122,7 @@ func (c *Client) Repos(ctx context.Context, token string) ([]Repo, error) {
 	if err != nil {
 		return nil, err
 	}
-	opts := &github.RepositoryListByAuthenticatedUserOptions{Affiliation: "owner", Sort: "pushed", ListOptions: github.ListOptions{PerPage: 100}}
+	opts := &github.RepositoryListByAuthenticatedUserOptions{Affiliation: "owner,collaborator,organization_member", Sort: "pushed", ListOptions: github.ListOptions{PerPage: 100}}
 	out := []Repo{}
 	for {
 		rs, resp, err := g.Repositories.ListByAuthenticatedUser(ctx, opts)
@@ -159,6 +173,34 @@ func (c *Client) Issue(ctx context.Context, token, owner, repo string, n int) (*
 		}
 	}
 	return is, nil
+}
+
+// RepoIssues lists a repo's issues ("issue") or pull requests ("pr"), most recently updated first.
+// shortcut: first 100 items only; add paging if a repo's list outgrows it.
+func (c *Client) RepoIssues(ctx context.Context, token, owner, repo, state, kind string) ([]IssueSummary, error) {
+	g, err := c.rest(token)
+	if err != nil {
+		return nil, err
+	}
+	is, _, err := g.Issues.ListByRepo(ctx, owner, repo, &github.IssueListByRepoOptions{
+		State: state, Sort: "updated", Direction: "desc", ListOptions: github.ListOptions{PerPage: 100}})
+	if err != nil {
+		return nil, wrap(err)
+	}
+	out := []IssueSummary{}
+	for _, x := range is {
+		if x.IsPullRequest() != (kind == "pr") {
+			continue
+		}
+		it := IssueSummary{Number: x.GetNumber(), Title: x.GetTitle(), State: x.GetState(), URL: x.GetHTMLURL(),
+			User: x.GetUser().GetLogin(), Labels: []Label{}, IsPR: x.IsPullRequest(), IsDraft: x.GetDraft(),
+			Comments: x.GetComments(), UpdatedAt: x.GetUpdatedAt().Time}
+		for _, l := range x.Labels {
+			it.Labels = append(it.Labels, Label{Name: l.GetName(), Color: l.GetColor()})
+		}
+		out = append(out, it)
+	}
+	return out, nil
 }
 
 func comment(x *github.IssueComment) Comment {

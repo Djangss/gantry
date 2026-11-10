@@ -82,6 +82,34 @@ func (c *Client) Projects(ctx context.Context, token string) ([]Project, error) 
 	return r.Viewer.ProjectsV2.Nodes, nil
 }
 
+const contributedQuery = `query { viewer { repositoriesContributedTo(first: 100, includeUserRepositories: false,
+  contributionTypes: [COMMIT, ISSUE, PULL_REQUEST, PULL_REQUEST_REVIEW], orderBy: {field: PUSHED_AT, direction: DESC}) {
+  nodes { nameWithOwner isPrivate } } } }`
+
+// Contributed lists repos the viewer contributed to without owning them, newest push first.
+func (c *Client) Contributed(ctx context.Context, token string) ([]Repo, error) {
+	var r struct {
+		Viewer struct {
+			Repos struct {
+				Nodes []*struct {
+					NameWithOwner string `json:"nameWithOwner"`
+					IsPrivate     bool   `json:"isPrivate"`
+				} `json:"nodes"`
+			} `json:"repositoriesContributedTo"`
+		} `json:"viewer"`
+	}
+	if err := c.graphql(ctx, token, contributedQuery, nil, &r); err != nil {
+		return nil, err
+	}
+	out := []Repo{}
+	for _, n := range r.Viewer.Repos.Nodes {
+		if n != nil { // repos the token cannot see come back as null
+			out = append(out, Repo{FullName: n.NameWithOwner, Private: n.IsPrivate})
+		}
+	}
+	return out, nil
+}
+
 // shortcut: first 100 items, no pagination; add cursor paging if a board outgrows it.
 const boardQuery = `query($id: ID!) { node(id: $id) { ... on ProjectV2 {
   title

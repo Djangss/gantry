@@ -92,3 +92,18 @@ func TestBoardPartialErrorsKeepReadableItems(t *testing.T) {
 		t.Fatalf("want readable items despite partial errors, got %v %+v", err, b)
 	}
 }
+
+func TestContributedRepos(t *testing.T) {
+	c := fake(t, map[string]http.HandlerFunc{"POST /graphql": func(w http.ResponseWriter, r *http.Request) {
+		var in struct{ Query string }
+		json.NewDecoder(r.Body).Decode(&in)
+		if !strings.Contains(in.Query, "repositoriesContributedTo") {
+			t.Errorf("query %s", in.Query)
+		}
+		fmt.Fprint(w, `{"data":{"viewer":{"repositoriesContributedTo":{"nodes":[{"nameWithOwner":"golang/go","isPrivate":false},null]}}}}`)
+	}})
+	rs, err := c.Contributed(ctx, "tok")
+	if err != nil || fmt.Sprint(rs) != "[{golang/go false}]" {
+		t.Fatalf("%v %v", err, rs)
+	}
+}

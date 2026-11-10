@@ -1,6 +1,7 @@
 package api
 
 import (
+	"cmp"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -26,6 +27,26 @@ func (s *Server) me(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) repos(w http.ResponseWriter, r *http.Request) {
 	out, err := s.gh.Repos(r.Context(), token(r))
+	s.reply(w, out, err)
+}
+
+func (s *Server) contributed(w http.ResponseWriter, r *http.Request) {
+	out, err := s.gh.Contributed(r.Context(), token(r))
+	s.reply(w, out, err)
+}
+
+func (s *Server) repoIssues(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	state, kind := cmp.Or(q.Get("state"), "open"), cmp.Or(q.Get("kind"), "issue")
+	if state != "open" && state != "closed" {
+		badRequest(w, "state must be open or closed")
+		return
+	}
+	if kind != "issue" && kind != "pr" {
+		badRequest(w, "kind must be issue or pr")
+		return
+	}
+	out, err := s.gh.RepoIssues(r.Context(), token(r), r.PathValue("owner"), r.PathValue("repo"), state, kind)
 	s.reply(w, out, err)
 }
 

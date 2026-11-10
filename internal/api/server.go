@@ -40,6 +40,8 @@ func NewServer(cfg Config, spa fs.FS) (http.Handler, error) {
 	api := http.NewServeMux()
 	api.HandleFunc("GET /api/me", s.me)
 	api.HandleFunc("GET /api/repos", s.repos)
+	api.HandleFunc("GET /api/repos/contributed", s.contributed)
+	api.HandleFunc("GET /api/repos/{owner}/{repo}/issues", s.repoIssues)
 	api.HandleFunc("GET /api/projects", s.projects)
 	api.HandleFunc("GET /api/projects/{id}/items", s.board)
 	api.HandleFunc("PATCH /api/projects/{id}/items/{itemId}", s.moveItem)
