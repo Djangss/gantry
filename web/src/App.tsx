@@ -6,6 +6,7 @@ import FilesView from "@/components/FilesView";
 import Home from "@/components/Home";
 import Layout from "@/components/Layout";
 import Login from "@/components/Login";
+import RepoView from "@/components/RepoView";
 import { Toaster } from "@/components/ui/sonner";
 
 const queryClient = new QueryClient({
@@ -22,6 +23,7 @@ const router = createBrowserRouter([
       { index: true, element: <Home /> },
       { path: "projects/:id", element: <BoardView /> },
       { path: "files/:owner/:repo", element: <FilesView /> },
+      { path: "repos/:owner/:repo", element: <RepoView /> },
     ],
   },
 ]);

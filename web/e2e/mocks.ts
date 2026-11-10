@@ -22,16 +22,39 @@ const issue = {
 
 const note = "---\ntitle: Board UX ideas\nlinks: [Djangss/gantry#7]\n---\n\n# Board UX ideas\n\n- Compact cards\n- Keyboard moves\n";
 
+const repoIssues = [
+  { number: 9, title: "Search across notes", state: "open", url: "https://github.com/Djangss/gantry/issues/9", user: "Djangss", labels: [{ name: "idea", color: "a2eeef" }], isPR: false, isDraft: false, comments: 1, updatedAt: "2026-11-10T09:00:00Z" },
+  { number: 7, title: "Kanban board", state: "open", url: "https://github.com/Djangss/gantry/issues/7", user: "Djangss", labels: [], isPR: false, isDraft: false, comments: 0, updatedAt: "2026-11-09T09:00:00Z" },
+];
+const repoPRs = [
+  { number: 15, title: "Fix v1 deferred minors", state: "open", url: "https://github.com/Djangss/gantry/pull/15", user: "Djangss", labels: [], isPR: true, isDraft: true, comments: 0, updatedAt: "2026-11-10T11:00:00Z" },
+];
+
 export async function mockApi(page: Page) {
   let patched: unknown = null;
   let commented: unknown = null;
+  let watched: { content: string } | null = null;
   await page.route("**/api/**", async (route) => {
     const req = route.request();
     const p = new URL(req.url()).pathname;
     const json = (body: unknown, status = 200) => route.fulfill({ status, json: body });
     if (p === "/api/me") return json({ login: "Djangss", notesRepo: "Djangss/notes" });
     if (p === "/api/projects") return json([{ id: "P1", title: "Gantry v1", number: 1, closed: false }]);
-    if (p === "/api/repos") return json([{ fullName: "Djangss/gantry", private: false }, { fullName: "Djangss/cap", private: false }]);
+    if (p === "/api/repos") return json([{ fullName: "Djangss/gantry", private: false }, { fullName: "Djangss/cap", private: false }, { fullName: "acme/api", private: true }]);
+    if (p === "/api/repos/contributed") return json([{ fullName: "golang/go", private: false }]);
+    if (p === "/api/repos/Djangss/notes/contents/gantry.json") {
+      if (req.method() === "PUT") {
+        watched = req.postDataJSON();
+        return json({ sha: "w2" });
+      }
+      return watched ? json({ content: watched.content, sha: "w2" }) : json({ error: "not found", code: "not_found" }, 404);
+    }
+    if (p === "/api/repos/Djangss/gantry/issues") {
+      const kind = new URL(req.url()).searchParams.get("kind");
+      return json(kind === "pr" ? repoPRs : repoIssues);
+    }
+    if (p === "/api/repos/rust-lang/rust/issues") return json([]);
+    if (p === "/api/repos/nobody/nothing/issues") return json({ error: "Not Found", code: "not_found" }, 404);
     if (p === "/api/projects/P1/items") return json(board);
     if (p === "/api/projects/P1/items/I1" && req.method() === "PATCH") {
       patched = req.postDataJSON();
@@ -47,5 +70,5 @@ export async function mockApi(page: Page) {
     if (p === "/api/repos/Djangss/notes/contents/notes/board-ux-ideas.md") return json({ content: note, sha: "s1" });
     return json({ error: "not mocked: " + p, code: "not_found" }, 404);
   });
-  return { patched: () => patched, commented: () => commented };
+  return { patched: () => patched, commented: () => commented, watched: () => watched };
 }

@@ -37,3 +37,15 @@ export type Issue = {
 export type TreeEntry = { path: string; type: "blob" | "tree" };
 export type FileData = { content: string; sha: string };
 export type LinkEntry = { path: string; title: string; kind: "note" | "drawing" };
+export type IssueSummary = {
+  number: number;
+  title: string;
+  state: string;
+  url: string;
+  user: string;
+  labels: Label[];
+  isPR: boolean;
+  isDraft: boolean;
+  comments: number;
+  updatedAt: string;
+};

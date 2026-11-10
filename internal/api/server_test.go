@@ -160,3 +160,29 @@ func TestFrameHeaders(t *testing.T) {
 		t.Fatalf("headers %v", w.Header())
 	}
 }
+
+func TestRepoIssuesValidatesQuery(t *testing.T) {
+	var got string
+	h, c := testServer(t, map[string]http.HandlerFunc{"GET /repos/o/r/issues": func(w http.ResponseWriter, r *http.Request) {
+		got = r.URL.Query().Get("state")
+		fmt.Fprint(w, `[]`)
+	}})
+	if w := call(h, c, "GET", "/api/repos/o/r/issues?state=all", ""); w.Code != 400 {
+		t.Fatalf("bad state: %d", w.Code)
+	}
+	if w := call(h, c, "GET", "/api/repos/o/r/issues?kind=discussion", ""); w.Code != 400 {
+		t.Fatalf("bad kind: %d", w.Code)
+	}
+	if w := call(h, c, "GET", "/api/repos/o/r/issues", ""); w.Code != 200 || got != "open" || strings.TrimSpace(w.Body.String()) != "[]" {
+		t.Fatalf("default: %d %q %s", w.Code, got, w.Body)
+	}
+}
+
+func TestContributedRoute(t *testing.T) {
+	h, c := testServer(t, map[string]http.HandlerFunc{"POST /graphql": func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"data":{"viewer":{"repositoriesContributedTo":{"nodes":[{"nameWithOwner":"golang/go","isPrivate":false}]}}}}`)
+	}})
+	if w := call(h, c, "GET", "/api/repos/contributed", ""); w.Code != 200 || !strings.Contains(w.Body.String(), `"fullName":"golang/go"`) {
+		t.Fatalf("%d %s", w.Code, w.Body)
+	}
+}

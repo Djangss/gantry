@@ -6,6 +6,7 @@ const views = {
   board: "/projects/P1",
   drawer: "/projects/P1?item=Djangss%2Fgantry%237",
   notes: "/files/Djangss/notes?path=notes%2Fboard-ux-ideas.md",
+  repo: "/repos/Djangss/gantry",
 };
 
 for (const width of [1440, 390]) {
