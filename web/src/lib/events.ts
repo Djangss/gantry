@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { send } from "@/api";
+import { api, send } from "@/api";
 
 // LiveEvent mirrors the server's /api/events payload.
 export type LiveEvent = { type: string; repo: string; number: number };
@@ -24,6 +24,13 @@ export function affects(e: LiveEvent, notesRepo: string) {
   };
 }
 
+// recoverClosed handles a source the browser gave up on: check the session (api redirects to /login on 401), then reopen.
+export async function recoverClosed(src: { readyState: number }, checkSession: () => Promise<unknown>, reopen: () => void) {
+  if (src.readyState !== 2) return; // CONNECTING: the browser is already retrying
+  await checkSession().catch(() => {}); // other errors: just try again
+  reopen();
+}
+
 // useLiveUpdates keeps one /api/events stream open and refetches what each event touches.
 // After a dropped connection it refetches everything except open files, since events may have been missed.
 export function useLiveUpdates(notesRepo: string) {
@@ -32,23 +39,37 @@ export function useLiveUpdates(notesRepo: string) {
     if (!notesRepo) return; // wait for /api/me so the stream opens once
     // Adds Gantry's webhook to repos you administer; the server does real work at most every 6 hours.
     send("POST", "/api/webhooks/sync").catch(() => {});
-    const src = new EventSource("/api/events");
+    let src: EventSource;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let stopped = false;
     let dropped = false;
-    src.onerror = () => {
-      dropped = true;
+    const open = () => {
+      src = new EventSource("/api/events");
+      src.onerror = () => {
+        dropped = true;
+        // A closed source never retries by itself (e.g. 401): check the session, then reopen.
+        void recoverClosed(src, () => api("/api/me"), () => {
+          if (!stopped) timer = setTimeout(open, 5000);
+        });
+      };
+      src.onopen = () => {
+        if (dropped) void qc.invalidateQueries({ predicate: (q) => q.queryKey[0] !== "file" });
+        dropped = false;
+      };
+      src.onmessage = (m) => {
+        try {
+          const match = affects(JSON.parse(m.data) as LiveEvent, notesRepo);
+          void qc.invalidateQueries({ predicate: (q) => match(q.queryKey) });
+        } catch {
+          // a malformed event changes nothing
+        }
+      };
     };
-    src.onopen = () => {
-      if (dropped) void qc.invalidateQueries({ predicate: (q) => q.queryKey[0] !== "file" });
-      dropped = false;
+    open();
+    return () => {
+      stopped = true;
+      clearTimeout(timer);
+      src.close();
     };
-    src.onmessage = (m) => {
-      try {
-        const match = affects(JSON.parse(m.data) as LiveEvent, notesRepo);
-        void qc.invalidateQueries({ predicate: (q) => match(q.queryKey) });
-      } catch {
-        // a malformed event changes nothing
-      }
-    };
-    return () => src.close();
   }, [qc, notesRepo]);
 }
