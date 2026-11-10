@@ -15,7 +15,8 @@ export function affects(e: LiveEvent, notesRepo: string) {
   const [owner, repo] = e.repo.split("/");
   return (key: readonly unknown[]) => {
     const [kind, a, b] = key;
-    if (issueEvents.has(e.type)) return (kind === "issue" && same(a, ref)) || (kind === "repoIssues" && same(a, e.repo)) || kind === "board";
+    if (issueEvents.has(e.type))
+      return ((kind === "issue" || kind === "prFiles") && same(a, ref)) || (kind === "repoIssues" && same(a, e.repo)) || kind === "board" || kind === "inbox";
     if (e.type.startsWith("projects_v2")) return kind === "board" || kind === "projects";
     if (e.type === "push") return (kind === "tree" && same(a, owner) && same(b, repo)) || (kind === "links" && same(e.repo, notesRepo));
     if (e.type === "repository") return kind === "repos" || kind === "contributed";

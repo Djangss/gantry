@@ -13,6 +13,8 @@ const keys: unknown[][] = [
   ["file", "Djangss/notes/notes/a.md"],
   ["links", "djangss/gantry#7"],
   ["repos"],
+  ["inbox"],
+  ["prFiles", "Djangss/gantry#7"],
 ];
 const hit = (e: Parameters<typeof affects>[0]) => keys.filter(affects(e, "Djangss/notes")).map((k) => k.join(" "));
 
@@ -21,11 +23,14 @@ test("an issue event refreshes that issue, its repo lists and boards", () => {
     "issue Djangss/gantry#7",
     "repoIssues Djangss/gantry issue open",
     "board P1",
+    "inbox",
+    "prFiles Djangss/gantry#7",
   ]);
   expect(hit({ type: "pull_request_review", repo: "Djangss/gantry", number: 8 })).toEqual([
     "issue Djangss/gantry#8",
     "repoIssues Djangss/gantry issue open",
     "board P1",
+    "inbox",
   ]);
 });
 
