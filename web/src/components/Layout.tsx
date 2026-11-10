@@ -65,8 +65,9 @@ function Nav() {
           <Inbox aria-hidden className="size-4 shrink-0 text-rail-muted" />
           Inbox
           {!!inbox.data?.length && (
-            <span className="ml-auto rounded-sm bg-hazard px-1.5 text-xs font-semibold text-hazard-foreground" aria-label={`${inbox.data.length} to review`}>
+            <span className="ml-auto rounded-sm bg-hazard px-1.5 text-xs font-semibold text-hazard-foreground">
               {inbox.data.length}
+              <span className="sr-only"> to review</span>
             </span>
           )}
         </NavLink>

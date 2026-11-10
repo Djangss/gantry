@@ -47,17 +47,21 @@ func repoFromURL(u string) string {
 	return after
 }
 
-// ItemNode returns the GraphQL node id Projects v2 needs, and whether the number is a PR.
-func (c *Client) ItemNode(ctx context.Context, token, owner, repo string, n int) (string, bool, error) {
+// ItemNode returns the GraphQL node id Projects v2 needs, whether the number is a PR, and whether it carries label.
+func (c *Client) ItemNode(ctx context.Context, token, owner, repo string, n int, label string) (string, bool, bool, error) {
 	g, err := c.rest(token)
 	if err != nil {
-		return "", false, err
+		return "", false, false, err
 	}
 	gi, _, err := g.Issues.Get(ctx, owner, repo, n)
 	if err != nil {
-		return "", false, wrap(err)
+		return "", false, false, wrap(err)
 	}
-	return gi.GetNodeID(), gi.IsPullRequest(), nil
+	has := false
+	for _, l := range gi.Labels {
+		has = has || l.GetName() == label
+	}
+	return gi.GetNodeID(), gi.IsPullRequest(), has, nil
 }
 
 // RemoveLabel treats a label that is already gone as removed, so a retried approve succeeds.

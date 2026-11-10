@@ -31,9 +31,12 @@ func (s *Server) approve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx, tok, owner, repo := r.Context(), token(r), r.PathValue("owner"), r.PathValue("repo")
-	node, isPR, err := s.gh.ItemNode(ctx, tok, owner, repo, n)
+	node, isPR, proposed, err := s.gh.ItemNode(ctx, tok, owner, repo, n, proposedLabel)
 	switch {
-	case err != nil:
+	case err != nil: // falls through to the failure check below
+	case isPR && !proposed:
+		notProposal(w)
+		return
 	case isPR:
 		err = s.gh.Merge(ctx, tok, owner, repo, n)
 	default:
@@ -57,7 +60,11 @@ func (s *Server) reject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx, tok, owner, repo := r.Context(), token(r), r.PathValue("owner"), r.PathValue("repo")
-	_, isPR, err := s.gh.ItemNode(ctx, tok, owner, repo, n)
+	_, isPR, proposed, err := s.gh.ItemNode(ctx, tok, owner, repo, n, proposedLabel)
+	if err == nil && !proposed {
+		notProposal(w)
+		return
+	}
 	if err == nil {
 		err = s.gh.Close(ctx, tok, owner, repo, n, isPR)
 	}
@@ -66,6 +73,10 @@ func (s *Server) reject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func notProposal(w http.ResponseWriter) {
+	writeJSON(w, http.StatusUnprocessableEntity, apiError{Error: "not a proposal", Code: "bad_request"})
 }
 
 func (s *Server) prFiles(w http.ResponseWriter, r *http.Request) {

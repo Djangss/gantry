@@ -26,7 +26,9 @@ func approveRoutes(isPR bool, calls *[]string, addStatus int) map[string]http.Ha
 		pr = `,"pull_request":{"url":"u"}`
 	}
 	return map[string]http.HandlerFunc{
-		"GET /repos/o/r/issues/4": func(w http.ResponseWriter, r *http.Request) { fmt.Fprintf(w, `{"number":4,"node_id":"I_x"%s}`, pr) },
+		"GET /repos/o/r/issues/4": func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, `{"number":4,"node_id":"I_x","labels":[{"name":"proposed"}]%s}`, pr)
+		},
 		"POST /graphql": func(w http.ResponseWriter, r *http.Request) {
 			*calls = append(*calls, "add")
 			if addStatus != 200 {
@@ -114,6 +116,26 @@ func TestReject(t *testing.T) {
 		want := map[bool]string{false: "[close-issue]", true: "[close-pr]"}[isPR]
 		if fmt.Sprint(calls) != want {
 			t.Fatalf("pr=%v %v", isPR, calls)
+		}
+	}
+}
+
+func TestUnlabelledItemIsNotAProposal(t *testing.T) {
+	for _, tc := range []struct{ name, path string }{{"approve", "approve"}, {"reject", "reject"}} {
+		for _, isPR := range []bool{false, true} {
+			if tc.name == "approve" && !isPR {
+				continue // issue approve stays unguarded so a retry succeeds
+			}
+			var calls []string
+			routes := approveRoutes(isPR, &calls, 200)
+			routes["GET /repos/o/r/issues/4"] = func(w http.ResponseWriter, r *http.Request) {
+				fmt.Fprintf(w, `{"number":4,"node_id":"I_x","labels":[{"name":"bug"}]%s}`, map[bool]string{true: `,"pull_request":{"url":"u"}`}[isPR])
+			}
+			h, c := testServer(t, routes)
+			w := call(h, c, "POST", "/api/repos/o/r/issues/4/"+tc.path, `{}`)
+			if w.Code != 422 || !strings.Contains(w.Body.String(), "not a proposal") || len(calls) != 0 {
+				t.Fatalf("%s pr=%v: %d %s %v", tc.name, isPR, w.Code, w.Body, calls)
+			}
 		}
 	}
 }
