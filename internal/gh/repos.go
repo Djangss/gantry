@@ -289,7 +289,7 @@ func (c *Client) PutContents(ctx context.Context, token, owner, repo, path, cont
 	}
 	if err != nil {
 		e := wrap(err)
-		if e.Status == 422 && sha == "" { // creating a file that already exists
+		if e.Status == 422 && sha == "" && strings.Contains(e.Message, `"sha" wasn't supplied`) { // creating a file that already exists
 			e.Status = 409
 		}
 		return "", e

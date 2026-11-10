@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -172,6 +173,20 @@ func TestPutContentsCreateExistingIsConflict(t *testing.T) {
 	var e *Error
 	if !errors.As(err, &e) || e.Status != 409 {
 		t.Fatalf("want 409, got %#v", err)
+	}
+}
+
+func TestPutContentsCreateInvalidIsNotConflict(t *testing.T) {
+	c := fake(t, map[string]http.HandlerFunc{
+		"PUT /repos/o/r/contents/notes/a.md": func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(422)
+			fmt.Fprint(w, `{"message":"path contains a malformed path component"}`)
+		},
+	})
+	_, err := c.PutContents(ctx, "tok", "o", "r", "notes/a.md", "x", "", "notes: add notes/a.md")
+	var e *Error
+	if !errors.As(err, &e) || e.Status != 422 || !strings.Contains(e.Message, "malformed") {
+		t.Fatalf("want 422 with GitHub's message, got %#v", err)
 	}
 }
 
