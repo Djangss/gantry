@@ -2,7 +2,7 @@ import {
   DndContext, KeyboardSensor, MouseSensor, TouchSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent,
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { Check, CircleCheck, CircleDashed, CircleDot, GitPullRequest } from "lucide-react";
+import { Check, CircleCheck, CircleDashed, CircleDot, GitPullRequest, GripVertical } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { useParams, useSearchParams } from "react-router";
@@ -33,7 +33,7 @@ function KindIcon({ item, done }: { item: Item; done: boolean }) {
 }
 
 function Card({ item, done, canMove, onOpen }: { item: Item; done: boolean; canMove: boolean; onOpen: (i: Item) => void }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: item.id, disabled: !canMove });
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, isDragging } = useDraggable({ id: item.id, disabled: !canMove });
   const openable = item.kind !== "DraftIssue";
   return (
     <article
@@ -41,13 +41,22 @@ function Card({ item, done, canMove, onOpen }: { item: Item; done: boolean; canM
       style={{ transform: CSS.Translate.toString(transform) }}
       className={cn(
         "space-y-2 rounded-sm border border-b-2 bg-card px-3 py-2.5 text-card-foreground hover:border-muted-foreground/50",
-        canMove && "cursor-grab",
-        isDragging && "relative z-10 -rotate-2 cursor-grabbing border-hazard shadow-xl hover:border-hazard",
+        isDragging && "relative z-10 -rotate-2 border-hazard shadow-xl hover:border-hazard",
       )}
-      {...listeners}
-      {...attributes}
     >
       <div className="flex gap-2">
+        {canMove && (
+          <button
+            type="button"
+            ref={setActivatorNodeRef}
+            aria-label={`Move ${item.title}`}
+            className={cn("-ml-1.5 mt-px shrink-0 touch-none rounded-sm p-1 text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring", isDragging ? "cursor-grabbing" : "cursor-grab")}
+            {...listeners}
+            {...attributes}
+          >
+            <GripVertical aria-hidden className="size-4" />
+          </button>
+        )}
         <KindIcon item={item} done={done} />
         {openable ? (
           <button type="button" className="text-left text-sm font-medium leading-snug hover:underline underline-offset-3" onClick={() => onOpen(item)}>
