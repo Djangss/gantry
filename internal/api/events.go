@@ -9,6 +9,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -141,4 +142,69 @@ func (s *Server) events(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+}
+
+// hookSync remembers the last webhook sync so opening the app doesn't re-check every repo each time.
+type hookSync struct {
+	mu   sync.Mutex
+	at   time.Time
+	last syncResult
+}
+
+type syncResult struct {
+	Enabled bool     `json:"enabled"`
+	Added   []string `json:"added"`
+	Failed  []string `json:"failed"`
+}
+
+const syncEvery = 6 * time.Hour
+
+// syncHooks adds Gantry's webhook to every repo the user administers. Repos without admin rights
+// can't take a webhook; they still refresh on reload.
+func (s *Server) syncHooks(w http.ResponseWriter, r *http.Request) {
+	if s.cfg.WebhookSecret == "" {
+		writeJSON(w, http.StatusOK, syncResult{Added: []string{}, Failed: []string{}})
+		return
+	}
+	s.sync.mu.Lock()
+	defer s.sync.mu.Unlock()
+	if time.Since(s.sync.at) < syncEvery {
+		writeJSON(w, http.StatusOK, s.sync.last)
+		return
+	}
+	repos, err := s.gh.Repos(r.Context(), token(r))
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	url := s.cfg.BaseURL + "/webhooks/github"
+	res := syncResult{Enabled: true, Added: []string{}, Failed: []string{}}
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, 4)
+	for _, repo := range repos {
+		if !repo.Admin {
+			continue
+		}
+		owner, name, _ := strings.Cut(repo.FullName, "/")
+		wg.Go(func() {
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			added, err := s.gh.EnsureHook(r.Context(), token(r), owner, name, url, s.cfg.WebhookSecret)
+			mu.Lock()
+			defer mu.Unlock()
+			switch {
+			case err != nil:
+				slog.Warn("webhook sync", "repo", repo.FullName, "err", err)
+				res.Failed = append(res.Failed, repo.FullName)
+			case added:
+				res.Added = append(res.Added, repo.FullName)
+			}
+		})
+	}
+	wg.Wait()
+	slices.Sort(res.Added)
+	slices.Sort(res.Failed)
+	s.sync.at, s.sync.last = time.Now(), res
+	writeJSON(w, http.StatusOK, res)
 }

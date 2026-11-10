@@ -1,5 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { send } from "@/api";
 
 // LiveEvent mirrors the server's /api/events payload.
 export type LiveEvent = { type: string; repo: string; number: number };
@@ -28,6 +29,8 @@ export function useLiveUpdates(notesRepo: string) {
   const qc = useQueryClient();
   useEffect(() => {
     if (!notesRepo) return; // wait for /api/me so the stream opens once
+    // Adds Gantry's webhook to repos you administer; the server does real work at most every 6 hours.
+    send("POST", "/api/webhooks/sync").catch(() => {});
     const src = new EventSource("/api/events");
     let dropped = false;
     src.onerror = () => {

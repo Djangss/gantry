@@ -103,7 +103,7 @@ func TestContributedRepos(t *testing.T) {
 		fmt.Fprint(w, `{"data":{"viewer":{"repositoriesContributedTo":{"nodes":[{"nameWithOwner":"golang/go","isPrivate":false},null]}}}}`)
 	}})
 	rs, err := c.Contributed(ctx, "tok")
-	if err != nil || fmt.Sprint(rs) != "[{golang/go false}]" {
+	if err != nil || fmt.Sprint(rs) != "[{golang/go false false}]" {
 		t.Fatalf("%v %v", err, rs)
 	}
 }

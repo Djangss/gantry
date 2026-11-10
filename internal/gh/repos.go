@@ -71,6 +71,7 @@ type IssueSummary struct {
 type Repo struct {
 	FullName string `json:"fullName"`
 	Private  bool   `json:"private"`
+	Admin    bool   `json:"admin"` // can manage the repo's webhooks
 }
 
 type TreeEntry struct {
@@ -131,7 +132,7 @@ func (c *Client) Repos(ctx context.Context, token string) ([]Repo, error) {
 			return nil, wrap(err)
 		}
 		for _, r := range rs {
-			out = append(out, Repo{FullName: r.GetFullName(), Private: r.GetPrivate()})
+			out = append(out, Repo{FullName: r.GetFullName(), Private: r.GetPrivate(), Admin: r.GetPermissions().GetAdmin()})
 		}
 		if resp.NextPage == 0 {
 			return out, nil
@@ -202,6 +203,37 @@ func (c *Client) RepoIssues(ctx context.Context, token, owner, repo, state, kind
 		out = append(out, it)
 	}
 	return out, nil
+}
+
+// HookEvents are the webhook events Gantry turns into live updates.
+var HookEvents = []string{"issues", "issue_comment", "pull_request", "pull_request_review", "pull_request_review_comment", "push"}
+
+// EnsureHook adds a webhook posting to url unless the repo already has one; it reports whether it added one.
+// shortcut: looks at the first 100 hooks only; repos rarely have more.
+func (c *Client) EnsureHook(ctx context.Context, token, owner, repo, url, secret string) (bool, error) {
+	g, err := c.rest(token)
+	if err != nil {
+		return false, err
+	}
+	hooks, _, err := g.Repositories.ListHooks(ctx, owner, repo, &github.ListOptions{PerPage: 100})
+	if err != nil {
+		return false, wrap(err)
+	}
+	for _, h := range hooks {
+		if h.GetConfig().GetURL() == url {
+			return false, nil
+		}
+	}
+	_, _, err = g.Repositories.CreateHook(ctx, owner, repo, &github.Hook{
+		Name:   github.Ptr("web"),
+		Active: github.Ptr(true),
+		Events: HookEvents,
+		Config: &github.HookConfig{URL: github.Ptr(url), ContentType: github.Ptr("json"), Secret: github.Ptr(secret)},
+	})
+	if err != nil {
+		return false, wrap(err)
+	}
+	return true, nil
 }
 
 func comment(x *github.IssueComment) Comment {

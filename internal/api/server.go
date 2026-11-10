@@ -27,6 +27,7 @@ type Server struct {
 	gh    *gh.Client
 	links *notes.Index
 	hub   *hub
+	sync  hookSync
 }
 
 func NewServer(cfg Config, spa fs.FS) (http.Handler, error) {
@@ -55,6 +56,7 @@ func NewServer(cfg Config, spa fs.FS) (http.Handler, error) {
 	api.HandleFunc("GET /api/links", s.linksFor)
 	api.HandleFunc("POST /api/links/rescan", s.rescan)
 	api.HandleFunc("GET /api/events", s.events)
+	api.HandleFunc("POST /api/webhooks/sync", s.syncHooks)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })

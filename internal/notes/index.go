@@ -99,7 +99,9 @@ func (x *Index) scan(ctx context.Context, token string) error {
 			continue
 		}
 		if prev, ok := old[e.Path]; ok && e.SHA != "" && prev.sha == e.SHA {
+			mu.Lock()            // fetches started earlier in this loop write files concurrently
 			files[e.Path] = prev // unchanged since it was parsed
+			mu.Unlock()
 			continue
 		}
 		wg.Go(func() {

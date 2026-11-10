@@ -105,3 +105,34 @@ func TestEventFromPayload(t *testing.T) {
 		}
 	}
 }
+
+func TestWebhookSyncAddsHooksToAdminRepos(t *testing.T) {
+	var calls, created []string
+	h, c := testServer(t, map[string]http.HandlerFunc{
+		"GET /user/repos": func(w http.ResponseWriter, r *http.Request) {
+			calls = append(calls, "repos")
+			fmt.Fprint(w, `[{"full_name":"o/a","permissions":{"admin":true}},{"full_name":"o/b","permissions":{"admin":false}}]`)
+		},
+		"GET /repos/o/a/hooks": func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, `[]`) },
+		"POST /repos/o/a/hooks": func(w http.ResponseWriter, r *http.Request) {
+			created = append(created, "o/a")
+			w.WriteHeader(201)
+			fmt.Fprint(w, `{"id":1}`)
+		},
+	}, withSecret)
+	w := call(h, c, "POST", "/api/webhooks/sync", "")
+	if w.Code != 200 || fmt.Sprint(created) != "[o/a]" || !strings.Contains(w.Body.String(), `"added":["o/a"]`) {
+		t.Fatalf("%d %s created=%v", w.Code, w.Body, created)
+	}
+	call(h, c, "POST", "/api/webhooks/sync", "")
+	if len(calls) != 1 {
+		t.Fatalf("second sync inside the window hit GitHub again (%d)", len(calls))
+	}
+}
+
+func TestWebhookSyncOffWithoutSecret(t *testing.T) {
+	h, c := testServer(t, nil)
+	if w := call(h, c, "POST", "/api/webhooks/sync", ""); w.Code != 200 || !strings.Contains(w.Body.String(), `"enabled":false`) {
+		t.Fatalf("%d %s", w.Code, w.Body)
+	}
+}
