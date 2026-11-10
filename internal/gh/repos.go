@@ -57,6 +57,7 @@ type Issue struct {
 // IssueSummary is one row of a repo's issue or pull request list.
 type IssueSummary struct {
 	Number    int       `json:"number"`
+	Repo      string    `json:"repo,omitempty"` // owner/repo; set only on cross-repo lists like the inbox
 	Title     string    `json:"title"`
 	State     string    `json:"state"`
 	URL       string    `json:"url"`
