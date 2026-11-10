@@ -83,12 +83,20 @@ GitHub label colours are the only raw hex values allowed in components; they com
   The ref is in mono 11px; labels are chips with a dot in the GitHub colour.
   While dragging, the card tilts, gets a yellow border and lifts with a single shadow.
 - **Drop target (signature):** the hovered column gets the `clearance` utility. It shows hazard
-  stripes and a yellow outline, like a pad being cleared for launch. This is the one bold
-  element in the app.
-- **Drawer:** a right sheet, max 36rem. Title, then a line of plain metadata, then the body.
-  Notes and comments are separated by borders, not cards inside cards.
-- **Editor:** source on the left, preview on the right (≥ lg). The file bar is a single row
-  holding the path in mono, the save status and the Save button.
+  stripes and a yellow outline, like a pad being cleared for launch.
+- **Drawer:** a right sheet, max 36rem. The header is a `--rail` band: a state plate (`plate-start`,
+  steel for open issues and draft or closed PRs, yellow for open PRs, green for merged or closed
+  issues), the 26px condensed title, then the ref (mono, links to GitHub), author and label chips.
+  PR reviews and checks sit in one `bg-muted` panel as icon rows (green check, red cross, dashed
+  circle for pending). Linked notes are small cards with a note or drawing icon. Comments have an
+  initial avatar instead of a left border. Sections are separated by borders, not cards inside cards.
+- **Files view:** a `bg-muted/50` file column with the 22px condensed title, icon rows in mono, and
+  the open file marked with a 3px yellow inset edge on a `bg-card` row.
+- **Editor:** source on the left, preview on the right (≥ lg). The file bar is a single `bg-card`
+  row: file icon, path in mono, a save-state dot (yellow while unsaved, green once saved) with its
+  text, and the Save button. CodeMirror sits on `--card` with a borderless gutter; the active line
+  number gets the yellow tick. Preview headings use `heading-condensed`; links are underlined in
+  yellow.
 
 ## Never do
 

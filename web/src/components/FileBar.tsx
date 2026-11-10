@@ -1,15 +1,22 @@
+import { FileText, PenTool } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { modLabel } from "@/lib/keys";
 import type { EditableFile } from "@/lib/useEditableFile";
+import { cn } from "@/lib/utils";
 
 export default function FileBar({ f, path }: { f: EditableFile; path: string }) {
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-3 border-b px-4 py-2">
-        <code title={path} className="truncate font-mono text-xs">{path}</code>
-        <span role="status" className="ml-auto text-xs text-muted-foreground">
+      <div className="flex items-center gap-3 border-b bg-card px-4 py-2">
+        {path.endsWith(".excalidraw") ? <PenTool aria-hidden className="size-4 shrink-0 text-muted-foreground" /> : <FileText aria-hidden className="size-4 shrink-0 text-muted-foreground" />}
+        <code title={path} className="truncate font-mono text-xs font-medium">{path}</code>
+        <span role="status" className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
+          {/* Yellow while there's work to save, green once it's on GitHub. */}
+          {(f.dirty || f.status === "Saved") && (
+            <span aria-hidden className={cn("size-2 rounded-full", f.dirty ? "bg-hazard" : "bg-go")} />
+          )}
           {f.status || (f.dirty ? "Unsaved changes" : "")}
         </span>
         <Button size="sm" onClick={() => void f.save()} disabled={!f.dirty || f.status === "Saving…"}>

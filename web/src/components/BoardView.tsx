@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { api, errorText, send } from "@/api";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import ItemDrawer from "@/components/ItemDrawer";
+import LabelChip from "@/components/LabelChip";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -58,12 +59,7 @@ function Card({ item, done, canMove, onOpen }: { item: Item; done: boolean; canM
       </div>
       <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 pl-[23px]">
         <span className="font-mono text-[11px] text-muted-foreground">{openable ? `${item.repo}#${item.number}` : "Draft"}</span>
-        {item.labels.map((l) => (
-          <span key={l.name} className="inline-flex h-5 items-center gap-1.5 rounded-full bg-muted px-2 text-[11px] font-medium">
-            <span aria-hidden className="size-[7px] rounded-full" style={{ background: `#${l.color}` }} />
-            {l.name}
-          </span>
-        ))}
+        {item.labels.map((l) => <LabelChip key={l.name} label={l} />)}
       </div>
     </article>
   );

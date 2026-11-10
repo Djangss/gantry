@@ -1,10 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  CircleCheck, CircleDashed, CircleDot, CircleX, ExternalLink, FileText, GitMerge, GitPullRequest, GitPullRequestClosed, GitPullRequestDraft,
+  PenTool, type LucideIcon,
+} from "lucide-react";
 import { useState } from "react";
 import Markdown from "react-markdown";
 import { Link, useNavigate } from "react-router";
 import remarkGfm from "remark-gfm";
 import { api, errorText, send } from "@/api";
-import { Badge } from "@/components/ui/badge";
+import LabelChip from "@/components/LabelChip";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import QueryError from "@/components/QueryError";
@@ -16,33 +20,61 @@ import { parseRef } from "@/lib/ref";
 import { cn } from "@/lib/utils";
 import type { Issue, LinkEntry, PR } from "@/types";
 
-function stateText(i: Issue): string {
-  if (!i.pr) return i.state === "open" ? "Open" : "Closed";
-  if (i.pr.merged) return "Merged";
-  return i.pr.draft ? "Draft pull request" : `Pull request ${i.state}`;
+// The state plate reuses the board's stage colours: yellow while a PR is open, green once it lands.
+function statePlate(i: Issue): { text: string; cls: string; Icon: LucideIcon } {
+  const todo = "bg-stage-todo text-white";
+  const done = "bg-stage-done text-white";
+  if (!i.pr) return i.state === "open" ? { text: "Open issue", cls: todo, Icon: CircleDot } : { text: "Closed issue", cls: done, Icon: CircleCheck };
+  if (i.pr.merged) return { text: "Merged", cls: done, Icon: GitMerge };
+  if (i.state !== "open") return { text: "Closed pull request", cls: todo, Icon: GitPullRequestClosed };
+  if (i.pr.draft) return { text: "Draft pull request", cls: todo, Icon: GitPullRequestDraft };
+  return { text: "Open pull request", cls: "bg-hazard text-hazard-foreground", Icon: GitPullRequest };
+}
+
+function StatusRow({ ok, bad, label, detail }: { ok: boolean; bad: boolean; label: string; detail: string }) {
+  const Icon = ok ? CircleCheck : bad ? CircleX : CircleDashed;
+  return (
+    <li className="flex items-center gap-2 text-sm">
+      <Icon aria-hidden className={cn("size-4 shrink-0", ok ? "text-go" : bad ? "text-destructive" : "text-muted-foreground")} />
+      <span className="truncate font-medium">{label}</span>
+      <span className="ml-auto shrink-0 text-xs text-muted-foreground">{detail}</span>
+    </li>
+  );
 }
 
 function PRStatus({ pr }: { pr: PR }) {
   if (!pr.reviews.length && !pr.checks.length) return null;
   return (
-    <div className="flex flex-wrap gap-1">
-      {pr.reviews.map((r) => (
-        <Badge key={r.user} variant="outline" className={cn(r.state === "APPROVED" && "border-go text-go")}>
-          {r.user}: {r.state.toLowerCase().replaceAll("_", " ")}
-        </Badge>
-      ))}
-      {pr.checks.map((c) => (
-        <Badge
-          key={c.name}
-          variant="outline"
-          className={cn(c.conclusion === "success" && "border-go text-go", c.conclusion === "failure" && "border-destructive text-destructive")}
-        >
-          {c.name}: {c.conclusion || c.status}
-        </Badge>
-      ))}
+    <div className="grid gap-4 rounded-sm bg-muted p-3 sm:grid-cols-2">
+      {pr.reviews.length > 0 && (
+        <div className="space-y-1.5">
+          <h3 className="text-xs text-muted-foreground">Reviews</h3>
+          <ul className="space-y-1">
+            {pr.reviews.map((r) => (
+              <StatusRow key={r.user} ok={r.state === "APPROVED"} bad={r.state === "CHANGES_REQUESTED"} label={r.user} detail={r.state.toLowerCase().replaceAll("_", " ")} />
+            ))}
+          </ul>
+        </div>
+      )}
+      {pr.checks.length > 0 && (
+        <div className="space-y-1.5">
+          <h3 className="text-xs text-muted-foreground">Checks</h3>
+          <ul className="space-y-1">
+            {pr.checks.map((c) => (
+              <StatusRow key={c.name} ok={c.conclusion === "success"} bad={c.conclusion === "failure"} label={c.name} detail={c.conclusion || c.status} />
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
+
+const Avatar = ({ login }: { login: string }) => (
+  <span aria-hidden className="grid size-7 shrink-0 place-items-center rounded-full bg-stage-todo text-xs font-bold uppercase text-white">
+    {login.at(0)}
+  </span>
+);
 
 export default function ItemDrawer({ itemRef, onClose }: { itemRef: string; onClose: () => void }) {
   const r = parseRef(itemRef);
@@ -68,30 +100,33 @@ export default function ItemDrawer({ itemRef, onClose }: { itemRef: string; onCl
   const create = (kind: "note" | "drawing") =>
     notesRepo && navigate(`/files/${notesRepo}?new=${kind}&link=${encodeURIComponent(itemRef)}`);
   const i = issue.data;
+  const plate = i && statePlate(i);
 
   return (
     <Sheet open onOpenChange={(o) => !o && onClose()}>
-      <SheetContent className="w-full gap-0 overflow-y-auto sm:max-w-xl">
-        <SheetHeader>
-          <SheetTitle className="text-xl heading-condensed">{i ? i.title : itemRef}</SheetTitle>
+      <SheetContent className="w-full gap-0 overflow-y-auto border-l-0 sm:max-w-xl [&>[data-slot=sheet-close]]:text-rail-foreground [&>[data-slot=sheet-close]]:hover:bg-white/10">
+        <SheetHeader className="gap-3 bg-rail px-5 pt-5 pb-5 text-rail-foreground">
+          {plate && (
+            <span className={cn("plate-start inline-flex h-7 w-fit items-center gap-1.5 pr-6 pl-2.5 text-sm font-semibold", plate.cls)}>
+              <plate.Icon aria-hidden className="size-4" />
+              {plate.text}
+            </span>
+          )}
+          <SheetTitle className="pr-8 text-[26px] leading-tight text-rail-foreground heading-condensed">{i ? i.title : itemRef}</SheetTitle>
           <SheetDescription asChild>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-rail-muted">
               {i && (
-                <a href={i.url} target="_blank" rel="noreferrer" className="font-mono text-xs hover:underline">
+                <a href={i.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-mono text-xs text-rail-foreground hover:underline">
                   {itemRef}
+                  <ExternalLink aria-hidden className="size-3" />
                 </a>
               )}
-              {i && <span>{stateText(i)}</span>}
               {i && <span>opened by {i.user}</span>}
-              {i?.labels.map((l) => (
-                <Badge key={l.name} variant="outline" style={{ borderColor: `#${l.color}` }}>
-                  {l.name}
-                </Badge>
-              ))}
+              {i?.labels.map((l) => <LabelChip key={l.name} label={l} />)}
             </div>
           </SheetDescription>
         </SheetHeader>
-        <div className="space-y-5 px-4 pb-6">
+        <div className="space-y-6 px-5 pt-5 pb-8">
           {!r && <p className="text-destructive">{itemRef} is not an issue reference like owner/repo#12.</p>}
           {issue.isPending && r && <Skeleton className="h-40" />}
           {issue.isError && <QueryError error={issue.error} retry={issue.refetch} />}
@@ -102,34 +137,45 @@ export default function ItemDrawer({ itemRef, onClose }: { itemRef: string; onCl
                 <Markdown remarkPlugins={[remarkGfm]}>{i.body || "_No description._"}</Markdown>
               </article>
               <section className="space-y-2 border-t pt-4">
-                <h3 className="text-base heading-condensed">Notes</h3>
+                <h3 className="text-[17px] heading-condensed">Notes</h3>
                 {links.isError && <QueryError error={links.error} retry={links.refetch} />}
                 {links.data?.length === 0 && <p className="text-sm text-muted-foreground">Nothing linked yet. Start a note or a drawing for this issue.</p>}
                 <ul className="space-y-1">
                   {links.data?.map((l) => (
                     <li key={l.path}>
-                      <Link className="text-sm hover:underline" to={`/files/${notesRepo}?path=${encodeURIComponent(l.path)}`}>
+                      <Link
+                        className="flex items-center gap-2 rounded-sm border border-b-2 bg-card px-3 py-2 text-sm font-medium hover:border-muted-foreground/50"
+                        to={`/files/${notesRepo}?path=${encodeURIComponent(l.path)}`}
+                      >
+                        {l.kind === "drawing" ? <PenTool aria-hidden className="size-4 text-muted-foreground" /> : <FileText aria-hidden className="size-4 text-muted-foreground" />}
                         {l.title}
-                        {l.kind === "drawing" && <span className="text-muted-foreground"> (drawing)</span>}
+                        {l.kind === "drawing" && <span className="sr-only"> (drawing)</span>}
                       </Link>
                     </li>
                   ))}
                 </ul>
                 <div className="flex gap-2">
-                  <Button size="sm" variant="secondary" disabled={!notesRepo} onClick={() => create("note")}>New note</Button>
-                  <Button size="sm" variant="secondary" disabled={!notesRepo} onClick={() => create("drawing")}>New drawing</Button>
+                  <Button size="sm" variant="secondary" disabled={!notesRepo} onClick={() => create("note")}>
+                    <FileText aria-hidden /> New note
+                  </Button>
+                  <Button size="sm" variant="secondary" disabled={!notesRepo} onClick={() => create("drawing")}>
+                    <PenTool aria-hidden /> New drawing
+                  </Button>
                 </div>
               </section>
               <section className="space-y-3 border-t pt-4">
-                <h3 className="text-base heading-condensed">Comments ({i.comments.length})</h3>
+                <h3 className="text-[17px] heading-condensed">Comments ({i.comments.length})</h3>
                 {i.comments.map((c) => (
-                  <div key={c.id} className="space-y-1 border-l-2 pl-3">
-                    <p className="text-xs text-muted-foreground">
-                      <span className="font-medium text-foreground">{c.user}</span> on {new Date(c.createdAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}
-                    </p>
-                    <article className="prose prose-sm max-w-none dark:prose-invert">
-                      <Markdown remarkPlugins={[remarkGfm]}>{c.body}</Markdown>
-                    </article>
+                  <div key={c.id} className="flex gap-3">
+                    <Avatar login={c.user} />
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <p className="text-xs text-muted-foreground">
+                        <span className="font-semibold text-foreground">{c.user}</span> on {new Date(c.createdAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}
+                      </p>
+                      <article className="prose prose-sm max-w-none dark:prose-invert">
+                        <Markdown remarkPlugins={[remarkGfm]}>{c.body}</Markdown>
+                      </article>
+                    </div>
                   </div>
                 ))}
                 <form
