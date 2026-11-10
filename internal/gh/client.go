@@ -16,14 +16,20 @@ import (
 type Client struct {
 	HTTP   *http.Client
 	APIURL string
+	cache  *ETagTransport
 }
 
 func New(apiURL string) *Client {
+	cache := NewETagTransport(http.DefaultTransport)
 	return &Client{
-		HTTP:   &http.Client{Transport: NewETagTransport(http.DefaultTransport), Timeout: 30 * time.Second},
+		HTTP:   &http.Client{Transport: cache, Timeout: 30 * time.Second},
 		APIURL: strings.TrimRight(apiURL, "/"),
+		cache:  cache,
 	}
 }
+
+// ClearCache drops cached responses, e.g. when a webhook says GitHub data changed.
+func (c *Client) ClearCache() { c.cache.Clear() }
 
 // Error is a GitHub failure. Status 0 means the request never got a response.
 type Error struct {

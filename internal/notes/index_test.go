@@ -160,3 +160,15 @@ func TestUpdateRecordsSHA(t *testing.T) {
 		t.Fatalf("a file saved through Gantry was fetched again (%d)", n)
 	}
 }
+
+func TestInvalidateRescansOnNextLookup(t *testing.T) {
+	src := newFake()
+	x := New(src, "Djangss", "notes")
+	bg := context.Background()
+	x.Lookup(bg, "tok", "o/r#1")
+	x.Invalidate()
+	x.Lookup(bg, "tok", "o/r#1")
+	if n := src.trees.Load(); n != 2 {
+		t.Fatalf("tree listed %d times, want a rescan after Invalidate", n)
+	}
+}

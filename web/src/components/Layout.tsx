@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { useLiveUpdates } from "@/lib/events";
 import { meQuery } from "@/lib/me";
 import { groupRepos, parseRepoName, watchedQueryOptions } from "@/lib/repos";
 import { cn } from "@/lib/utils";
@@ -133,6 +134,8 @@ const ListSkeleton = () => (
 
 export default function Layout() {
   const location = useLocation();
+  const me = useQuery(meQuery);
+  useLiveUpdates(me.data?.notesRepo ?? "");
   const [menuOpen, setMenuOpen] = useState(false);
   useEffect(() => setMenuOpen(false), [location.pathname, location.search]);
 

@@ -33,14 +33,14 @@ func TestReposPaginates(t *testing.T) {
 			t.Errorf("query %v", r.URL.Query())
 		}
 		if r.URL.Query().Get("page") == "2" {
-			fmt.Fprint(w, `[{"full_name":"o/b","private":true}]`)
+			fmt.Fprint(w, `[{"full_name":"o/b","private":true,"permissions":{"admin":true}}]`)
 			return
 		}
 		w.Header().Set("Link", fmt.Sprintf(`<http://%s/user/repos?page=2>; rel="next"`, r.Host))
 		fmt.Fprint(w, `[{"full_name":"o/a"}]`)
 	}})
 	rs, err := c.Repos(ctx, "tok")
-	if err != nil || fmt.Sprint(rs) != "[{o/a false} {o/b true}]" {
+	if err != nil || fmt.Sprint(rs) != "[{o/a false false} {o/b true true}]" {
 		t.Fatalf("%v %v", err, rs)
 	}
 }
@@ -261,5 +261,33 @@ func TestRepoIssuesFiltersKind(t *testing.T) {
 	prs, _ := c.RepoIssues(ctx, "tok", "o", "r", "open", "pr")
 	if len(prs) != 1 || !prs[0].IsPR || !prs[0].IsDraft || prs[0].Labels == nil {
 		t.Fatalf("prs: %+v", prs)
+	}
+}
+
+func TestEnsureHook(t *testing.T) {
+	var created map[string]any
+	c := fake(t, map[string]http.HandlerFunc{
+		"GET /repos/o/has/hooks": body(`[{"id":1,"config":{"url":"https://g.test/webhooks/github"}}]`),
+		"GET /repos/o/new/hooks": body(`[{"id":2,"config":{"url":"https://other.test/hook"}}]`),
+		"POST /repos/o/new/hooks": func(w http.ResponseWriter, r *http.Request) {
+			json.NewDecoder(r.Body).Decode(&created)
+			w.WriteHeader(201)
+			fmt.Fprint(w, `{"id":3}`)
+		},
+	})
+	added, err := c.EnsureHook(ctx, "tok", "o", "has", "https://g.test/webhooks/github", "sec")
+	if err != nil || added {
+		t.Fatalf("existing hook: added=%v err=%v", added, err)
+	}
+	added, err = c.EnsureHook(ctx, "tok", "o", "new", "https://g.test/webhooks/github", "sec")
+	if err != nil || !added {
+		t.Fatalf("missing hook: added=%v err=%v", added, err)
+	}
+	cfg := created["config"].(map[string]any)
+	if cfg["url"] != "https://g.test/webhooks/github" || cfg["secret"] != "sec" || cfg["content_type"] != "json" || created["active"] != true {
+		t.Fatalf("created %v", created)
+	}
+	if ev := fmt.Sprint(created["events"]); !strings.Contains(ev, "issues") || !strings.Contains(ev, "push") {
+		t.Fatalf("events %s", ev)
 	}
 }

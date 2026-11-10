@@ -18,6 +18,7 @@ type Config struct {
 	BaseURL                    string
 	Port                       string
 	GitHubWebURL, GitHubAPIURL string
+	WebhookSecret              string // empty disables POST /webhooks/github
 }
 
 type Server struct {
@@ -25,6 +26,8 @@ type Server struct {
 	auth  *auth.Auth
 	gh    *gh.Client
 	links *notes.Index
+	hub   *hub
+	sync  hookSync
 }
 
 func NewServer(cfg Config, spa fs.FS) (http.Handler, error) {
@@ -33,7 +36,7 @@ func NewServer(cfg Config, spa fs.FS) (http.Handler, error) {
 	if err != nil {
 		return nil, err
 	}
-	s := &Server{cfg: cfg, auth: a, gh: gh.New(cfg.GitHubAPIURL)}
+	s := &Server{cfg: cfg, auth: a, gh: gh.New(cfg.GitHubAPIURL), hub: newHub()}
 	owner, repo, _ := strings.Cut(cfg.NotesRepo, "/")
 	s.links = notes.New(s.gh, owner, repo)
 
@@ -52,6 +55,8 @@ func NewServer(cfg Config, spa fs.FS) (http.Handler, error) {
 	api.HandleFunc("PUT /api/repos/{owner}/{repo}/contents/{path...}", s.putContents)
 	api.HandleFunc("GET /api/links", s.linksFor)
 	api.HandleFunc("POST /api/links/rescan", s.rescan)
+	api.HandleFunc("GET /api/events", s.events)
+	api.HandleFunc("POST /api/webhooks/sync", s.syncHooks)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
@@ -59,6 +64,7 @@ func NewServer(cfg Config, spa fs.FS) (http.Handler, error) {
 	mux.HandleFunc("GET /auth/callback", a.Callback)
 	mux.Handle("POST /auth/logout", auth.CSRF(http.HandlerFunc(a.Logout)))
 	mux.Handle("/api/", a.Require(auth.CSRF(api)))
+	mux.HandleFunc("POST /webhooks/github", s.webhook)
 	mux.Handle("/", spaHandler(spa))
 	return noFraming(mux), nil
 }

@@ -99,7 +99,9 @@ func (x *Index) scan(ctx context.Context, token string) error {
 			continue
 		}
 		if prev, ok := old[e.Path]; ok && e.SHA != "" && prev.sha == e.SHA {
+			mu.Lock()            // fetches started earlier in this loop write files concurrently
 			files[e.Path] = prev // unchanged since it was parsed
+			mu.Unlock()
 			continue
 		}
 		wg.Go(func() {
@@ -163,6 +165,13 @@ func (x *Index) Lookup(ctx context.Context, token, ref string) ([]Entry, error) 
 	x.mu.Unlock()
 	slices.SortFunc(out, func(a, b Entry) int { return strings.Compare(a.Path, b.Path) })
 	return out, nil
+}
+
+// Invalidate makes the next Lookup rescan, e.g. after a push to the notes repo from elsewhere.
+func (x *Index) Invalidate() {
+	x.mu.Lock()
+	x.built = false
+	x.mu.Unlock()
 }
 
 // Update re-parses one saved file; before the first scan it does nothing, since the scan will read it.

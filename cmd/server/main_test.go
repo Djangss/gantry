@@ -57,3 +57,15 @@ func TestLoadConfigBadNotesRepo(t *testing.T) {
 		t.Fatal("want error for NOTES_REPO without owner")
 	}
 }
+
+func TestLoadConfigWebhookSecretOptional(t *testing.T) {
+	m := valid()
+	cfg, err := loadConfig(env(m))
+	if err != nil || cfg.WebhookSecret != "" {
+		t.Fatalf("without secret: %v %q", err, cfg.WebhookSecret)
+	}
+	m["WEBHOOK_SECRET"] = "hush"
+	if cfg, _ := loadConfig(env(m)); cfg.WebhookSecret != "hush" {
+		t.Fatalf("secret not read: %q", cfg.WebhookSecret)
+	}
+}

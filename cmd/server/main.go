@@ -44,14 +44,15 @@ func loadConfig(getenv func(string) string) (api.Config, error) {
 		return v
 	}
 	cfg := api.Config{
-		ClientID:     need("GITHUB_CLIENT_ID"),
-		ClientSecret: need("GITHUB_CLIENT_SECRET"),
-		AllowedLogin: need("ALLOWED_LOGIN"),
-		NotesRepo:    need("NOTES_REPO"),
-		BaseURL:      strings.TrimRight(need("BASE_URL"), "/"),
-		Port:         getenv("PORT"),
-		GitHubWebURL: "https://github.com",
-		GitHubAPIURL: "https://api.github.com",
+		ClientID:      need("GITHUB_CLIENT_ID"),
+		ClientSecret:  need("GITHUB_CLIENT_SECRET"),
+		AllowedLogin:  need("ALLOWED_LOGIN"),
+		NotesRepo:     need("NOTES_REPO"),
+		BaseURL:       strings.TrimRight(need("BASE_URL"), "/"),
+		Port:          getenv("PORT"),
+		GitHubWebURL:  "https://github.com",
+		GitHubAPIURL:  "https://api.github.com",
+		WebhookSecret: getenv("WEBHOOK_SECRET"),
 	}
 	key := need("COOKIE_KEY")
 	if len(missing) > 0 {
