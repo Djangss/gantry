@@ -76,3 +76,43 @@ test("a failed sidebar list can be retried", async ({ page }) => {
   await nav.getByRole("button", { name: "Retry" }).click();
   await expect(nav.getByRole("link", { name: "Djangss/gantry" })).toBeVisible();
 });
+
+test("a repo page lists issues and PRs and opens the drawer", async ({ page }) => {
+  await mockApi(page);
+  await page.goto("/");
+  const nav = page.getByRole("navigation", { name: "Main" });
+  await expect(nav.getByText("Shared with you")).toBeVisible();
+  await expect(nav.getByRole("link", { name: "golang/go" })).toBeVisible();
+  await nav.getByRole("link", { name: "Djangss/gantry" }).click();
+  await expect(page.getByRole("button", { name: /Search across notes/ })).toBeVisible();
+  await page.getByRole("searchbox", { name: "Search issues" }).fill("kanban");
+  await expect(page.getByRole("button", { name: /Search across notes/ })).toHaveCount(0);
+  await page.getByRole("button", { name: /Kanban board/ }).click();
+  await expect(page.getByRole("dialog")).toContainText("Drag cards between Status columns.");
+  await page.keyboard.press("Escape");
+  await page.getByRole("searchbox", { name: "Search issues" }).fill("");
+  await page.getByRole("button", { name: "Pull requests" }).click();
+  await expect(page.getByRole("button", { name: /Fix v1 deferred minors/ })).toContainText("Draft");
+});
+
+test("any repo can be opened by name and watched", async ({ page }) => {
+  const api = await mockApi(page);
+  await page.goto("/");
+  const box = page.getByRole("searchbox", { name: "Filter repos or open owner/repo" });
+  await box.fill("https://github.com/rust-lang/rust");
+  await box.press("Enter");
+  await expect(page).toHaveURL(/\/repos\/rust-lang\/rust/);
+  await expect(page.getByText("No open issues.")).toBeVisible();
+  await page.getByRole("button", { name: "Watch" }).click();
+  await expect.poll(() => JSON.parse(api.watched()?.content ?? "{}").repos).toEqual(["rust-lang/rust"]);
+  const nav = page.getByRole("navigation", { name: "Main" });
+  await expect(nav.getByRole("link", { name: "rust-lang/rust" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Stop watching" })).toBeVisible();
+});
+
+test("an unknown repo shows the error and no Watch button", async ({ page }) => {
+  await mockApi(page);
+  await page.goto("/repos/nobody/nothing");
+  await expect(page.getByText("Not Found")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Watch" })).toHaveCount(0);
+});

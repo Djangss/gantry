@@ -1,15 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { NavLink, Outlet, useLocation } from "react-router";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
 import { api, errorText, send } from "@/api";
 import QueryError from "@/components/QueryError";
 import { Skeleton } from "@/components/ui/skeleton";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { meQuery } from "@/lib/me";
+import { groupRepos, parseRepoName, watchedQueryOptions } from "@/lib/repos";
 import { cn } from "@/lib/utils";
 import type { Project, Repo } from "@/types";
 
@@ -29,6 +31,13 @@ function Nav() {
   const me = useQuery(meQuery);
   const projects = useQuery({ queryKey: ["projects"], queryFn: () => api<Project[]>("/api/projects") });
   const repos = useQuery({ queryKey: ["repos"], queryFn: () => api<Repo[]>("/api/repos") });
+  const contributed = useQuery({ queryKey: ["contributed"], queryFn: () => api<Repo[]>("/api/repos/contributed") });
+  const watched = useQuery(watchedQueryOptions(me.data?.notesRepo ?? ""));
+  const navigate = useNavigate();
+  const [repoQuery, setRepoQuery] = useState("");
+  const groups = groupRepos(me.data?.login ?? "", repos.data ?? [], contributed.data ?? [], watched.data?.repos ?? [], repoQuery);
+  const typed = parseRepoName(repoQuery);
+  const known = groups.some((g) => g.repos.some((r) => r.fullName.toLowerCase() === typed?.toLowerCase()));
   const openProjects = projects.data?.filter((p) => !p.closed);
 
   async function logout() {
@@ -60,13 +69,49 @@ function Nav() {
           </NavLink>
         </Section>
       )}
-      <Section title="Docs">
+      <Section title="Repos">
+        <form
+          className="px-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!typed) return;
+            setRepoQuery("");
+            navigate(`/repos/${typed}`);
+          }}
+        >
+          <Input
+            type="search"
+            aria-label="Filter repos or open owner/repo"
+            placeholder="Filter, or open owner/repo"
+            value={repoQuery}
+            onChange={(e) => setRepoQuery(e.target.value)}
+            className="h-8"
+          />
+        </form>
+        {typed && !known && (
+          <button
+            type="button"
+            onClick={() => {
+              setRepoQuery("");
+              navigate(`/repos/${typed}`);
+            }}
+            className="block w-full truncate rounded-md px-2 py-1 text-left text-sm hover:bg-accent"
+          >
+            Open <span className="font-mono text-xs">{typed}</span>
+          </button>
+        )}
         {repos.isPending && <ListSkeleton />}
         {repos.isError && <QueryError className="px-2" error={repos.error} retry={repos.refetch} />}
-        {repos.data?.map((r) => (
-          <NavLink key={r.fullName} to={`/files/${r.fullName}?root=docs`} className={linkClass}>
-            {r.fullName}
-          </NavLink>
+        {contributed.isError && <QueryError className="px-2" error={contributed.error} retry={contributed.refetch} />}
+        {groups.map((g) => (
+          <div key={g.title} className="space-y-0.5 pt-1">
+            <h3 className="px-2 text-[11px] text-muted-foreground">{g.title}</h3>
+            {g.repos.map((r) => (
+              <NavLink key={r.fullName} to={`/repos/${r.fullName}`} className={linkClass}>
+                {r.fullName}
+              </NavLink>
+            ))}
+          </div>
         ))}
       </Section>
       <Separator className="mt-auto" />
