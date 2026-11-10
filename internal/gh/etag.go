@@ -2,6 +2,7 @@ package gh
 
 import (
 	"bytes"
+	"container/list"
 	"crypto/sha256"
 	"encoding/hex"
 	"io"
@@ -10,21 +11,58 @@ import (
 )
 
 // ETagTransport replays cached bodies on 304 Not Modified; GitHub does not count 304s against the rate limit.
-// shortcut: unbounded map and any successful REST write clears it all; fine for one user, add an LRU and per-path invalidation if memory grows.
+// Cached bodies are capped at MaxBytes in total, evicting the least recently used first.
+// shortcut: any successful REST write clears it all; add per-path invalidation if that costs too many refetches.
 type ETagTransport struct {
-	Base    http.RoundTripper
+	Base     http.RoundTripper
+	MaxBytes int // total cached body bytes; bodies larger than this are not cached
+
 	mu      sync.Mutex
-	entries map[string]etagEntry
+	entries map[string]*list.Element // values are *etagEntry
+	order   *list.List               // front = most recently used
+	size    int
 }
 
 type etagEntry struct {
+	key    string
 	etag   string
 	header http.Header
 	body   []byte
 }
 
 func NewETagTransport(base http.RoundTripper) *ETagTransport {
-	return &ETagTransport{Base: base, entries: map[string]etagEntry{}}
+	return &ETagTransport{Base: base, MaxBytes: 50 << 20, entries: map[string]*list.Element{}, order: list.New()}
+}
+
+func (t *ETagTransport) lookup(key string) (*etagEntry, bool) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	el, ok := t.entries[key]
+	if !ok {
+		return nil, false
+	}
+	t.order.MoveToFront(el)
+	return el.Value.(*etagEntry), true
+}
+
+func (t *ETagTransport) store(e *etagEntry) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if el, ok := t.entries[e.key]; ok {
+		t.size -= len(el.Value.(*etagEntry).body)
+		t.order.Remove(el)
+		delete(t.entries, e.key)
+	}
+	if len(e.body) > t.MaxBytes {
+		return
+	}
+	t.entries[e.key] = t.order.PushFront(e)
+	t.size += len(e.body)
+	for t.size > t.MaxBytes {
+		old := t.order.Remove(t.order.Back()).(*etagEntry)
+		delete(t.entries, old.key)
+		t.size -= len(old.body)
+	}
 }
 
 func (t *ETagTransport) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -34,15 +72,15 @@ func (t *ETagTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		if err == nil && resp.StatusCode < 400 && req.URL.Path != "/graphql" {
 			t.mu.Lock()
 			clear(t.entries)
+			t.order.Init()
+			t.size = 0
 			t.mu.Unlock()
 		}
 		return resp, err
 	}
 	sum := sha256.Sum256([]byte(req.Header.Get("Authorization") + "\n" + req.Header.Get("Accept") + "\n" + req.URL.String()))
 	key := hex.EncodeToString(sum[:])
-	t.mu.Lock()
-	e, ok := t.entries[key]
-	t.mu.Unlock()
+	e, ok := t.lookup(key)
 	if ok {
 		req = req.Clone(req.Context())
 		req.Header.Set("If-None-Match", e.etag)
@@ -64,9 +102,7 @@ func (t *ETagTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		if err != nil {
 			return nil, err
 		}
-		t.mu.Lock()
-		t.entries[key] = etagEntry{etag: etag, header: resp.Header.Clone(), body: body}
-		t.mu.Unlock()
+		t.store(&etagEntry{key: key, etag: etag, header: resp.Header.Clone(), body: body})
 		resp.Body = io.NopCloser(bytes.NewReader(body))
 	}
 	return resp, nil
