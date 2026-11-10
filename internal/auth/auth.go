@@ -2,6 +2,7 @@
 package auth
 
 import (
+	"bytes"
 	"context"
 	"crypto/aes"
 	"crypto/cipher"
@@ -185,6 +186,26 @@ func (a *Auth) exchange(ctx context.Context, code string) (string, error) {
 	return out.AccessToken, nil
 }
 
+// revoke deletes the OAuth token on GitHub, so a copied cookie stops working too.
+func (a *Auth) revoke(ctx context.Context, token string) error {
+	body, _ := json.Marshal(map[string]string{"access_token": token})
+	req, err := http.NewRequestWithContext(ctx, "DELETE", a.opt.APIURL+"/applications/"+url.PathEscape(a.opt.ClientID)+"/token", bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.SetBasicAuth(a.opt.ClientID, a.opt.ClientSecret)
+	req.Header.Set("Accept", "application/vnd.github+json")
+	resp, err := a.http.Do(req)
+	if err != nil {
+		return err
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("DELETE token: %s", resp.Status)
+	}
+	return nil
+}
+
 func (a *Auth) user(ctx context.Context, token string) (string, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", a.opt.APIURL+"/user", nil)
 	if err != nil {
@@ -210,6 +231,13 @@ func (a *Auth) user(ctx context.Context, token string) (string, error) {
 }
 
 func (a *Auth) Logout(w http.ResponseWriter, r *http.Request) {
+	if c, err := r.Cookie(sessionCookie); err == nil {
+		if s, err := a.open(c.Value); err == nil {
+			if err := a.revoke(r.Context(), s.Token); err != nil {
+				slog.Warn("logout: token not revoked", "err", err)
+			}
+		}
+	}
 	a.ClearSession(w)
 	w.WriteHeader(http.StatusNoContent)
 }

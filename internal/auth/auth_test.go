@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -164,5 +165,46 @@ func TestCSRF(t *testing.T) {
 		if w.Code != c.want {
 			t.Errorf("%s header=%q: got %d want %d", c.method, c.header, w.Code, c.want)
 		}
+	}
+}
+
+func TestLogoutRevokesToken(t *testing.T) {
+	gh := fakeGitHub(t, "Djangss")
+	var revoked string
+	gh.Config.Handler.(*http.ServeMux).HandleFunc("DELETE /applications/id/token", func(w http.ResponseWriter, r *http.Request) {
+		if u, p, _ := r.BasicAuth(); u == "id" && p == "secret" {
+			var in struct {
+				AccessToken string `json:"access_token"`
+			}
+			json.NewDecoder(r.Body).Decode(&in)
+			revoked = in.AccessToken
+		}
+		w.WriteHeader(204)
+	})
+	a := newAuth(t, gh)
+	set := httptest.NewRecorder()
+	a.SetSession(set, Session{Token: "tok-123", Login: "Djangss"})
+	r := httptest.NewRequest("POST", "/auth/logout", nil)
+	r.AddCookie(set.Result().Cookies()[0])
+	w := httptest.NewRecorder()
+	a.Logout(w, r)
+	if w.Code != 204 || revoked != "tok-123" {
+		t.Fatalf("status %d, revoked %q", w.Code, revoked)
+	}
+	if c := w.Result().Cookies(); len(c) == 0 || c[0].MaxAge >= 0 {
+		t.Fatal("session cookie not cleared")
+	}
+}
+
+func TestLogoutClearsCookieWhenRevokeFails(t *testing.T) {
+	a := newAuth(t, fakeGitHub(t, "Djangss")) // no revoke route: 404
+	set := httptest.NewRecorder()
+	a.SetSession(set, Session{Token: "tok-123", Login: "Djangss"})
+	r := httptest.NewRequest("POST", "/auth/logout", nil)
+	r.AddCookie(set.Result().Cookies()[0])
+	w := httptest.NewRecorder()
+	a.Logout(w, r)
+	if c := w.Result().Cookies(); w.Code != 204 || len(c) == 0 || c[0].MaxAge >= 0 {
+		t.Fatalf("status %d cookies %v", w.Code, c)
 	}
 }
