@@ -134,7 +134,7 @@ export default function ItemDrawer({ itemRef, onClose }: { itemRef: string; onCl
           {issue.isError && <QueryError error={issue.error} retry={issue.refetch} />}
           {i && (
             <>
-              {r && i.state === "open" && i.labels.some((l) => l.name === "proposed") && <ProposalActions itemRef={itemRef} base={base} isPR={!!i.pr} />}
+              {r && i.state === "open" && i.labels.some((l) => l.name === "proposed") && <ProposalActions itemRef={itemRef} base={base} isPR={!!i.pr} isDraft={i.pr?.draft} />}
               {i.pr && <PRStatus pr={i.pr} />}
               <article className="prose prose-sm max-w-none dark:prose-invert">
                 <Markdown remarkPlugins={[remarkGfm]}>{i.body || "_No description._"}</Markdown>

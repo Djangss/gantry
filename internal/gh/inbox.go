@@ -2,6 +2,7 @@ package gh
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 
 	"github.com/google/go-github/v93/github"
@@ -47,21 +48,21 @@ func repoFromURL(u string) string {
 	return after
 }
 
-// ItemNode returns the GraphQL node id Projects v2 needs, whether the number is a PR, and whether it carries label.
-func (c *Client) ItemNode(ctx context.Context, token, owner, repo string, n int, label string) (string, bool, bool, error) {
+// ItemNode returns the GraphQL node id Projects v2 needs, whether the number is a PR, whether it is a draft, and whether it carries label.
+func (c *Client) ItemNode(ctx context.Context, token, owner, repo string, n int, label string) (string, bool, bool, bool, error) {
 	g, err := c.rest(token)
 	if err != nil {
-		return "", false, false, err
+		return "", false, false, false, err
 	}
 	gi, _, err := g.Issues.Get(ctx, owner, repo, n)
 	if err != nil {
-		return "", false, false, wrap(err)
+		return "", false, false, false, wrap(err)
 	}
 	has := false
 	for _, l := range gi.Labels {
 		has = has || l.GetName() == label
 	}
-	return gi.GetNodeID(), gi.IsPullRequest(), has, nil
+	return gi.GetNodeID(), gi.IsPullRequest(), gi.GetDraft(), has, nil
 }
 
 // RemoveLabel treats a label that is already gone as removed, so a retried approve succeeds.
@@ -93,6 +94,16 @@ func (c *Client) Close(ctx context.Context, token, owner, repo string, n int, is
 		return wrap(err)
 	}
 	return nil
+}
+
+const readyMutation = `mutation($id: ID!) {
+  markPullRequestReadyForReview(input: {pullRequestId: $id}) { pullRequest { id } }
+}`
+
+// MarkReady takes a draft PR out of draft, which GitHub requires before it can merge.
+func (c *Client) MarkReady(ctx context.Context, token, nodeID string) error {
+	var r json.RawMessage
+	return c.graphql(ctx, token, readyMutation, map[string]any{"id": nodeID}, &r)
 }
 
 // Merge squash-merges a PR. GitHub's 409 (stale head) becomes 422 so the API layer passes its message on

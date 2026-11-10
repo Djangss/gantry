@@ -31,14 +31,19 @@ func (s *Server) approve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx, tok, owner, repo := r.Context(), token(r), r.PathValue("owner"), r.PathValue("repo")
-	node, isPR, proposed, err := s.gh.ItemNode(ctx, tok, owner, repo, n, proposedLabel)
+	node, isPR, draft, proposed, err := s.gh.ItemNode(ctx, tok, owner, repo, n, proposedLabel)
 	switch {
 	case err != nil: // falls through to the failure check below
 	case isPR && !proposed:
 		notProposal(w)
 		return
 	case isPR:
-		err = s.gh.Merge(ctx, tok, owner, repo, n)
+		if draft {
+			err = s.gh.MarkReady(ctx, tok, node)
+		}
+		if err == nil {
+			err = s.gh.Merge(ctx, tok, owner, repo, n)
+		}
 	default:
 		if in.ProjectID != "" {
 			err = s.gh.AddToProject(ctx, tok, in.ProjectID, node)
@@ -60,7 +65,7 @@ func (s *Server) reject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx, tok, owner, repo := r.Context(), token(r), r.PathValue("owner"), r.PathValue("repo")
-	_, isPR, proposed, err := s.gh.ItemNode(ctx, tok, owner, repo, n, proposedLabel)
+	_, isPR, _, proposed, err := s.gh.ItemNode(ctx, tok, owner, repo, n, proposedLabel)
 	if err == nil && !proposed {
 		notProposal(w)
 		return

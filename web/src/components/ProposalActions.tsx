@@ -15,7 +15,7 @@ const readLast = () => {
   }
 };
 
-export default function ProposalActions({ itemRef, base, isPR }: { itemRef: string; base: string; isPR: boolean }) {
+export default function ProposalActions({ itemRef, base, isPR, isDraft }: { itemRef: string; base: string; isPR: boolean; isDraft?: boolean }) {
   const qc = useQueryClient();
   const projects = useQuery({ queryKey: ["projects"], queryFn: () => api<Project[]>("/api/projects"), enabled: !isPR });
   const open = projects.data?.filter((p) => !p.closed) ?? [];
@@ -40,6 +40,7 @@ export default function ProposalActions({ itemRef, base, isPR }: { itemRef: stri
   return (
     <section aria-label="Proposal" className="space-y-2 rounded-sm border border-hazard bg-hazard/10 p-3">
       <p className="text-sm font-medium">{isPR ? "Proposed doc change" : "Proposed issue"}</p>
+      {isPR && isDraft && <p className="text-sm text-muted-foreground">This PR is a draft.</p>}
       {!isPR && (
         <label className="flex items-center gap-2 text-sm">
           <span className="text-muted-foreground">Add to</span>
@@ -55,7 +56,7 @@ export default function ProposalActions({ itemRef, base, isPR }: { itemRef: stri
       )}
       <div className="flex gap-2">
         <Button size="sm" disabled={act.isPending} onClick={() => act.mutate("approve")}>
-          <Check aria-hidden /> {isPR ? "Approve and merge" : "Approve"}
+          <Check aria-hidden /> {isPR ? (isDraft ? "Mark ready and merge" : "Approve and merge") : "Approve"}
         </Button>
         <Button size="sm" variant="secondary" disabled={act.isPending} onClick={() => act.mutate("reject")}>
           <X aria-hidden /> Reject

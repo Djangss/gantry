@@ -92,6 +92,22 @@ func TestApprovePRMerges(t *testing.T) {
 	}
 }
 
+func TestApproveDraftPRMarksReadyThenMerges(t *testing.T) {
+	var calls []string
+	routes := approveRoutes(true, &calls, 200)
+	routes["GET /repos/o/r/issues/4"] = func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"number":4,"node_id":"PR_x","draft":true,"pull_request":{"url":"u"},"labels":[{"name":"proposed"}]}`)
+	}
+	routes["POST /graphql"] = func(w http.ResponseWriter, r *http.Request) {
+		calls = append(calls, "ready")
+		fmt.Fprint(w, `{"data":{"markPullRequestReadyForReview":{"pullRequest":{"id":"PR_x"}}}}`)
+	}
+	h, c := testServer(t, routes)
+	if w := call(h, c, "POST", "/api/repos/o/r/issues/4/approve", ""); w.Code != 204 || fmt.Sprint(calls) != "[ready merge]" {
+		t.Fatalf("%d %v", w.Code, calls)
+	}
+}
+
 func TestApproveMergeConflictShowsGitHubMessage(t *testing.T) {
 	var calls []string
 	routes := approveRoutes(true, &calls, 200)
