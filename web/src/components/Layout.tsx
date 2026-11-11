@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Bell, BookOpen, Inbox, NotebookText } from "lucide-react";
+import { Bell, BookOpen, Inbox, NotebookText, Search } from "lucide-react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
 import { api, errorText, send } from "@/api";
 import QueryError from "@/components/QueryError";
 import { Skeleton } from "@/components/ui/skeleton";
+import SearchDialog from "@/components/SearchDialog";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -90,7 +91,7 @@ function Notifications() {
   );
 }
 
-function Nav() {
+function Nav({ onSearch }: { onSearch: () => void }) {
   const me = useQuery(meQuery);
   const inbox = useQuery(inboxQuery);
   const projects = useQuery({ queryKey: ["projects"], queryFn: () => api<Project[]>("/api/projects") });
@@ -116,6 +117,15 @@ function Nav() {
   return (
     <nav aria-label="Main" className="flex h-full flex-col gap-5 overflow-y-auto bg-rail px-3 py-4 text-rail-foreground">
       <Brand className="px-2" />
+      <button
+        type="button"
+        onClick={onSearch}
+        className="flex items-center gap-2.5 rounded-sm border border-white/15 bg-white/5 px-2 py-1.5 text-left text-sm text-rail-muted hover:bg-white/10"
+      >
+        <Search aria-hidden className="size-4 shrink-0" />
+        Search
+        <kbd className="ml-auto hidden font-mono text-xs md:inline">Ctrl K</kbd>
+      </button>
       <Section title="Review">
         <NavLink to="/inbox" className={linkClass}>
           <Inbox aria-hidden className="size-4 shrink-0 text-rail-muted" />
@@ -233,24 +243,45 @@ export default function Layout() {
   useLiveUpdates(me.data?.notesRepo ?? "");
   const [menuOpen, setMenuOpen] = useState(false);
   useEffect(() => setMenuOpen(false), [location.pathname, location.search]);
+  const [searchOpen, setSearchOpen] = useState(false);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+  const openSearch = () => {
+    setMenuOpen(false);
+    setSearchOpen(true);
+  };
 
   return (
     <div className="flex h-svh flex-col bg-background md:flex-row">
       <aside className="hidden w-62 shrink-0 md:block">
-        <Nav />
+        <Nav onSearch={openSearch} />
       </aside>
       <header className="flex items-center justify-between bg-rail px-4 py-2 text-rail-foreground md:hidden">
         <Brand />
-        <Button variant="ghost" size="sm" className="hover:bg-white/10 hover:text-rail-foreground" onClick={() => setMenuOpen(true)}>
-          Menu
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon-sm" aria-label="Search" className="hover:bg-white/10 hover:text-rail-foreground" onClick={openSearch}>
+            <Search aria-hidden />
+          </Button>
+          <Button variant="ghost" size="sm" className="hover:bg-white/10 hover:text-rail-foreground" onClick={() => setMenuOpen(true)}>
+            Menu
+          </Button>
+        </div>
       </header>
       <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
         <SheetContent side="left" className="w-72 border-0 bg-rail p-0">
           <SheetTitle className="sr-only">Navigation</SheetTitle>
-          <Nav />
+          <Nav onSearch={openSearch} />
         </SheetContent>
       </Sheet>
+      <SearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
       <main className="min-h-0 flex-1 overflow-auto">
         <ErrorBoundary key={location.pathname}>
           <Outlet />

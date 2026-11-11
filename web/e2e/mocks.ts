@@ -105,6 +105,11 @@ export async function mockApi(page: Page) {
         { filename: "docs/inbox.png", status: "added", patch: "" },
       ]);
     if (p === "/api/repos/Djangss/gantry/issues/7") return json(issue);
+    if (p === "/api/search") {
+      const q = new URL(req.url()).searchParams.get("q") ?? "";
+      if (q !== "kanban") return json({ notes: [], issues: [] });
+      return json({ notes: [{ path: "notes/board-ux-ideas.md", title: "Board UX ideas", kind: "note" }], issues: [{ ...repoIssues[1], repo: "Djangss/gantry" }] });
+    }
     if (p === "/api/links") return json([{ path: "notes/board-ux-ideas.md", title: "Board UX ideas", kind: "note" }]);
     if (p === "/api/repos/Djangss/notes/tree") return json([{ path: "notes/board-ux-ideas.md", type: "blob" }, { path: "drawings/architecture.excalidraw", type: "blob" }]);
     if (p === "/api/repos/Djangss/notes/contents/notes/board-ux-ideas.md") return json({ content: note, sha: "s1" });
