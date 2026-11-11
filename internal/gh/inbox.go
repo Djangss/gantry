@@ -79,8 +79,8 @@ func (c *Client) RemoveLabel(ctx context.Context, token, owner, repo string, n i
 	return nil
 }
 
-// Close closes an issue as not planned, or a PR without merging.
-func (c *Client) Close(ctx context.Context, token, owner, repo string, n int, isPR bool) error {
+// Close closes an issue with reason ("completed" or "not_planned"), or a PR without merging.
+func (c *Client) Close(ctx context.Context, token, owner, repo string, n int, isPR bool, reason string) error {
 	g, err := c.rest(token)
 	if err != nil {
 		return err
@@ -88,7 +88,7 @@ func (c *Client) Close(ctx context.Context, token, owner, repo string, n int, is
 	if isPR {
 		_, _, err = g.PullRequests.Edit(ctx, owner, repo, n, &github.PullRequest{State: github.Ptr("closed")})
 	} else {
-		_, _, err = g.Issues.Update(ctx, owner, repo, n, github.UpdateIssueRequest{State: github.Ptr("closed"), StateReason: github.Ptr("not_planned")})
+		_, _, err = g.Issues.Update(ctx, owner, repo, n, github.UpdateIssueRequest{State: github.Ptr("closed"), StateReason: github.Ptr(reason)})
 	}
 	if err != nil {
 		return wrap(err)
