@@ -1,7 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { BookOpen, Inbox, NotebookText } from "lucide-react";
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
+import { Bell, BookOpen, Inbox, NotebookText } from "lucide-react";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
 import { api, errorText, send } from "@/api";
 import QueryError from "@/components/QueryError";
@@ -13,9 +13,10 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { inboxQuery } from "@/lib/inbox";
 import { useLiveUpdates } from "@/lib/events";
 import { meQuery } from "@/lib/me";
+import { markRead, notificationsQuery, unreadCount } from "@/lib/notifications";
 import { groupRepos, parseRepoName, watchedQueryOptions } from "@/lib/repos";
 import { cn } from "@/lib/utils";
-import type { Project, Repo } from "@/types";
+import type { Notification, Project, Repo } from "@/types";
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
   cn("flex items-center gap-2.5 truncate rounded-sm px-2 py-1.5 text-sm hover:bg-white/7", isActive && "bg-white/10 font-semibold");
@@ -31,6 +32,61 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <h2 className="px-2 pb-1 text-xs font-medium text-rail-muted">{title}</h2>
       {children}
     </div>
+  );
+}
+
+// Unread review requests and mentions. Opening an issue or PR goes through the inbox page, which hosts the drawer.
+function Notifications() {
+  const qc = useQueryClient();
+  const list = useQuery(notificationsQuery);
+  const read = useMutation({
+    mutationFn: (id: string) => send("PATCH", `/api/notifications/threads/${id}`),
+    onSuccess: (_, id) => qc.setQueryData<Notification[]>(["notifications"], (old) => old && markRead(old, id)),
+    onError: (e) => toast.error(`Could not mark as read: ${errorText(e)}`),
+  });
+  const unread = list.data?.filter((n) => n.unread) ?? [];
+  const count = unreadCount(list.data);
+  return (
+    <Section title="Notifications">
+      {list.isError && <QueryError className="px-2 text-rail-foreground" error={list.error} retry={list.refetch} />}
+      {list.data && (
+        <p className="flex items-center gap-2.5 px-2 text-sm">
+          <Bell aria-hidden className="size-4 shrink-0 text-rail-muted" />
+          {count ? "Unread" : "All caught up"}
+          {!!count && (
+            <span className="ml-auto rounded-sm bg-hazard px-1.5 text-xs font-semibold text-hazard-foreground">
+              {count}
+              <span className="sr-only"> unread notifications</span>
+            </span>
+          )}
+        </p>
+      )}
+      <ul className="space-y-0.5">
+        {unread.slice(0, 5).map((n) => (
+          <li key={n.id} className="flex items-start gap-1 rounded-sm px-2 py-1 text-sm hover:bg-white/7">
+            {n.ref ? (
+              <Link to={`/inbox?item=${encodeURIComponent(n.ref)}`} className="min-w-0 flex-1">
+                <span className="block truncate">{n.title}</span>
+                <span className="block truncate font-mono text-[11px] text-rail-muted">{n.ref}</span>
+              </Link>
+            ) : (
+              <span className="min-w-0 flex-1">
+                <span className="block truncate">{n.title}</span>
+                <span className="block truncate font-mono text-[11px] text-rail-muted">{n.repo}</span>
+              </span>
+            )}
+            <Button variant="ghost" size="sm" className="h-6 px-1.5 text-xs hover:bg-white/10 hover:text-rail-foreground" aria-label={`Mark "${n.title}" as read`} disabled={read.isPending} onClick={() => read.mutate(n.id)}>
+              Read
+            </Button>
+          </li>
+        ))}
+      </ul>
+      {unread.length > 5 && (
+        <a href="https://github.com/notifications" target="_blank" rel="noreferrer" className="block px-2 text-xs text-rail-muted underline">
+          +{unread.length - 5} more on GitHub
+        </a>
+      )}
+    </Section>
   );
 }
 
@@ -72,6 +128,7 @@ function Nav() {
           )}
         </NavLink>
       </Section>
+      <Notifications />
       <Section title="Projects">
         {projects.isPending && <ListSkeleton />}
         {projects.isError && <QueryError className="px-2 text-rail-foreground" error={projects.error} retry={projects.refetch} />}

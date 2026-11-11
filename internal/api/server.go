@@ -59,6 +59,8 @@ func NewServer(cfg Config, spa fs.FS) (http.Handler, error) {
 	api.HandleFunc("PUT /api/repos/{owner}/{repo}/contents/{path...}", s.putContents)
 	api.HandleFunc("GET /api/links", s.linksFor)
 	api.HandleFunc("POST /api/links/rescan", s.rescan)
+	api.HandleFunc("GET /api/notifications", s.notifications)
+	api.HandleFunc("PATCH /api/notifications/threads/{id}", s.markNotificationRead)
 	api.HandleFunc("GET /api/events", s.events)
 	api.HandleFunc("POST /api/webhooks/sync", s.syncHooks)
 

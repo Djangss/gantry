@@ -51,4 +51,15 @@ export type IssueSummary = {
   updatedAt: string;
 };
 
+export type Notification = {
+  id: string;
+  unread: boolean;
+  reason: string;
+  title: string;
+  type: string;
+  repo: string;
+  ref: string; // owner/repo#n for issues and PRs, else ""
+  updatedAt: string;
+};
+
 export type PRFile = { filename: string; status: string; patch: string };
