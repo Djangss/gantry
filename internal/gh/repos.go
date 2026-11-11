@@ -307,6 +307,9 @@ func (c *Client) Tree(ctx context.Context, token, owner, repo, prefix string) ([
 		}
 		return []TreeEntry{}, nil
 	}
+	if t.GetTruncated() {
+		return nil, &Error{Status: 422, Message: "repository too large to list"}
+	}
 	out := []TreeEntry{}
 	for _, x := range t.Entries {
 		p := x.GetPath()

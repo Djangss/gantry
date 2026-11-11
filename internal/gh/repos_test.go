@@ -208,6 +208,18 @@ func TestTree(t *testing.T) {
 	}
 }
 
+func TestTreeTruncatedIsError(t *testing.T) {
+	c := fake(t, map[string]http.HandlerFunc{
+		"GET /repos/o/r":                body(`{"default_branch":"main"}`),
+		"GET /repos/o/r/git/trees/main": body(`{"truncated":true,"tree":[{"path":"a.md","type":"blob"}]}`),
+	})
+	_, err := c.Tree(ctx, "tok", "o", "r", "")
+	var e *Error
+	if !errors.As(err, &e) || e.Status != 422 {
+		t.Fatalf("want 422 Error, got %v", err)
+	}
+}
+
 func TestRESTUsesETagCache(t *testing.T) {
 	var inm []string
 	c := fake(t, map[string]http.HandlerFunc{"GET /user/repos": func(w http.ResponseWriter, r *http.Request) {
