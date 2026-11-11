@@ -9,6 +9,7 @@ import { useParams, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { api, errorText, send } from "@/api";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import ConvertDraft from "@/components/ConvertDraft";
 import ItemDrawer from "@/components/ItemDrawer";
 import LabelChip from "@/components/LabelChip";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -34,6 +35,7 @@ function KindIcon({ item, done }: { item: Item; done: boolean }) {
 
 function Card({ item, done, canMove, onOpen }: { item: Item; done: boolean; canMove: boolean; onOpen: (i: Item) => void }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, isDragging } = useDraggable({ id: item.id, disabled: !canMove });
+  const { id: projectId = "" } = useParams();
   const openable = item.kind !== "DraftIssue";
   return (
     <article
@@ -69,6 +71,7 @@ function Card({ item, done, canMove, onOpen }: { item: Item; done: boolean; canM
       <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 pl-[23px]">
         <span className="font-mono text-[11px] text-muted-foreground">{openable ? `${item.repo}#${item.number}` : "Draft"}</span>
         {item.labels.map((l) => <LabelChip key={l.name} label={l} />)}
+        {!openable && <ConvertDraft projectId={projectId} itemId={item.id} />}
       </div>
     </article>
   );
