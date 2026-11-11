@@ -75,7 +75,7 @@ export default function RepoView() {
         )}
       </header>
       <NewIssue full={full} onCreated={(n) => setParams({ ...Object.fromEntries(params), item: `${full}#${n}` })} />
-      {watchError &&<p className="text-sm text-destructive">{watchError}</p>}
+      {watchError && <p className="text-sm text-destructive">{watchError}</p>}
       <nav aria-label="Repo sections" className="flex flex-wrap items-center gap-1 border-b pb-2">
         <Button size="sm" variant={kind === "issue" ? "secondary" : "ghost"} aria-pressed={kind === "issue"} onClick={() => set({ tab: "issues" })}>
           Issues

@@ -47,6 +47,17 @@ func (s *Server) updateIssue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx, tok, owner, repo := r.Context(), token(r), r.PathValue("owner"), r.PathValue("repo")
+	if in.State == "closed" {
+		_, isPR, _, _, err := s.gh.ItemNode(ctx, tok, owner, repo, n, "")
+		if err != nil {
+			s.fail(w, err)
+			return
+		}
+		if isPR {
+			writeJSON(w, http.StatusUnprocessableEntity, apiError{Error: "use the inbox to close pull requests", Code: "bad_request"})
+			return
+		}
+	}
 	var err error
 	if in.Labels != nil || in.Assignees != nil {
 		err = s.gh.SetLabelsAssignees(ctx, tok, owner, repo, n, in.Labels, in.Assignees)

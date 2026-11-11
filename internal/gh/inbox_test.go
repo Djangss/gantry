@@ -114,3 +114,10 @@ func TestPRFiles(t *testing.T) {
 		t.Fatalf("%v %+v", err, fs)
 	}
 }
+
+func TestMarkReadyRejectedPayload(t *testing.T) {
+	c := fake(t, map[string]http.HandlerFunc{"POST /graphql": body(`{"data":{"markPullRequestReadyForReview":null},"errors":[{"type":"FORBIDDEN","message":"no"}]}`)})
+	if err := c.MarkReady(ctx, "tok", "PR_x"); err == nil {
+		t.Fatal("null payload treated as success")
+	}
+}

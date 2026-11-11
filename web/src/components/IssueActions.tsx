@@ -29,7 +29,7 @@ export default function IssueActions({ owner, repo, base, issue }: { owner: stri
   const people = useQuery({ queryKey: ["assignees", owner, repo], queryFn: () => api<string[]>(`/api/repos/${owner}/${repo}/assignees`) });
   const act = useMutation({
     mutationFn: (body: Record<string, unknown>) => send("PATCH", base, body),
-    onSuccess: () => refreshIssues(qc),
+    onSuccess: () => refreshIssues(qc) // returned so inputs stay disabled until the refetch lands,
   });
   const open = issue.state === "open";
   return (

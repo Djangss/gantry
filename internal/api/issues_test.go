@@ -26,12 +26,18 @@ func TestCreateIssue(t *testing.T) {
 
 func TestUpdateIssue(t *testing.T) {
 	var got []map[string]any
-	h, c := testServer(t, map[string]http.HandlerFunc{"PATCH /repos/o/r/issues/4": func(w http.ResponseWriter, r *http.Request) {
-		var m map[string]any
-		json.NewDecoder(r.Body).Decode(&m)
-		got = append(got, m)
-		fmt.Fprint(w, `{}`)
-	}})
+	h, c := testServer(t, map[string]http.HandlerFunc{
+		"GET /repos/o/r/issues/4": func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, `{"number":4}`) },
+		"GET /repos/o/r/issues/5": func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, `{"number":5,"pull_request":{"url":"u"}}`) },
+		"PATCH /repos/o/r/issues/4": func(w http.ResponseWriter, r *http.Request) {
+			var m map[string]any
+			json.NewDecoder(r.Body).Decode(&m)
+			got = append(got, m)
+			fmt.Fprint(w, `{}`)
+		}})
+	if w := call(h, c, "PATCH", "/api/repos/o/r/issues/5", `{"state":"closed"}`); w.Code != 422 {
+		t.Fatalf("closing a PR: %d", w.Code)
+	}
 	for _, tc := range []struct{ body, key, want string }{
 		{`{"state":"closed","reason":"not_planned"}`, "state_reason", "not_planned"},
 		{`{"state":"closed"}`, "state_reason", "completed"},
@@ -48,6 +54,18 @@ func TestUpdateIssue(t *testing.T) {
 	}
 	if w := call(h, c, "PATCH", "/api/repos/o/r/issues/4", `{"state":"merged"}`); w.Code != 400 {
 		t.Fatalf("bad state: %d", w.Code)
+	}
+}
+
+func TestConvertDraftRejectedPayload(t *testing.T) {
+	h, c := testServer(t, map[string]http.HandlerFunc{
+		"GET /repos/o/r": func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, `{"node_id":"R_1"}`) },
+		"POST /graphql": func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, `{"data":{"convertProjectV2DraftIssueItemToIssue":null},"errors":[{"type":"FORBIDDEN","message":"no"}]}`)
+		},
+	})
+	if w := call(h, c, "POST", "/api/projects/P1/items/DI1/convert", `{"repo":"o/r"}`); w.Code != 422 {
+		t.Fatalf("%d %s", w.Code, w.Body)
 	}
 }
 

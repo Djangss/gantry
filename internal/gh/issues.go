@@ -2,7 +2,6 @@ package gh
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/google/go-github/v93/github"
 )
@@ -91,6 +90,19 @@ func (c *Client) ConvertDraft(ctx context.Context, token, itemID, owner, repo st
 	if err != nil {
 		return wrap(err)
 	}
-	var out json.RawMessage
-	return c.graphql(ctx, token, convertMutation, map[string]any{"item": itemID, "repo": r.GetNodeID()}, &out)
+	var out struct {
+		Convert *struct {
+			Item struct {
+				ID string `json:"id"`
+			} `json:"item"`
+		} `json:"convertProjectV2DraftIssueItemToIssue"`
+	}
+	if err := c.graphql(ctx, token, convertMutation, map[string]any{"item": itemID, "repo": r.GetNodeID()}, &out); err != nil {
+		return err
+	}
+	// graphql only warns on errors that come with data, so an empty payload is the rejection signal.
+	if out.Convert == nil || out.Convert.Item.ID == "" {
+		return &Error{Status: 422, Message: "GitHub rejected the conversion"}
+	}
+	return nil
 }

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -47,7 +48,9 @@ func approveRoutes(isPR bool, calls *[]string, addStatus int) map[string]http.Ha
 			fmt.Fprint(w, `{"merged":true}`)
 		},
 		"PATCH /repos/o/r/issues/4": func(w http.ResponseWriter, r *http.Request) {
-			*calls = append(*calls, "close-issue")
+			var b map[string]any
+			json.NewDecoder(r.Body).Decode(&b)
+			*calls = append(*calls, fmt.Sprint("close-issue:", b["state_reason"]))
 			fmt.Fprint(w, `{}`)
 		},
 		"PATCH /repos/o/r/pulls/4": func(w http.ResponseWriter, r *http.Request) { *calls = append(*calls, "close-pr"); fmt.Fprint(w, `{}`) },
@@ -129,7 +132,7 @@ func TestReject(t *testing.T) {
 		if w := call(h, c, "POST", "/api/repos/o/r/issues/4/reject", ""); w.Code != 204 {
 			t.Fatalf("%d %s", w.Code, w.Body)
 		}
-		want := map[bool]string{false: "[close-issue]", true: "[close-pr]"}[isPR]
+		want := map[bool]string{false: "[close-issue:not_planned]", true: "[close-pr]"}[isPR]
 		if fmt.Sprint(calls) != want {
 			t.Fatalf("pr=%v %v", isPR, calls)
 		}

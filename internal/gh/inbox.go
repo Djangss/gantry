@@ -2,7 +2,6 @@ package gh
 
 import (
 	"context"
-	"encoding/json"
 	"strings"
 
 	"github.com/google/go-github/v93/github"
@@ -102,8 +101,20 @@ const readyMutation = `mutation($id: ID!) {
 
 // MarkReady takes a draft PR out of draft, which GitHub requires before it can merge.
 func (c *Client) MarkReady(ctx context.Context, token, nodeID string) error {
-	var r json.RawMessage
-	return c.graphql(ctx, token, readyMutation, map[string]any{"id": nodeID}, &r)
+	var r struct {
+		Ready *struct {
+			PullRequest struct {
+				ID string `json:"id"`
+			} `json:"pullRequest"`
+		} `json:"markPullRequestReadyForReview"`
+	}
+	if err := c.graphql(ctx, token, readyMutation, map[string]any{"id": nodeID}, &r); err != nil {
+		return err
+	}
+	if r.Ready == nil || r.Ready.PullRequest.ID == "" { // partial errors are only warned about by graphql
+		return &Error{Status: 422, Message: "GitHub rejected marking the PR ready"}
+	}
+	return nil
 }
 
 // Merge squash-merges a PR. GitHub's 409 (stale head) becomes 422 so the API layer passes its message on
