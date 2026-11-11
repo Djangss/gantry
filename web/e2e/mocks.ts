@@ -15,7 +15,7 @@ export const board = {
 const issue = {
   number: 7, title: "Kanban board", state: "open", user: "Djangss", url: "https://github.com/Djangss/gantry/pull/7",
   body: "Drag cards between Status columns.\n\n- [x] columns\n- [ ] rollback toast",
-  labels: [{ name: "ui", color: "a2eeef" }],
+  labels: [{ name: "ui", color: "a2eeef" }], assignees: [],
   comments: [{ id: 1, user: "Djangss", body: "Works on mobile too.", createdAt: "2026-11-09T10:00:00Z" }],
   pr: { merged: false, draft: false, reviews: [{ user: "reviewer", state: "APPROVED" }], checks: [{ name: "ci", status: "completed", conclusion: "success" }] },
 };
@@ -32,11 +32,11 @@ const repoPRs = [
 
 const proposedIssue = {
   number: 41, title: "Add keyboard shortcuts to the board", state: "open", user: "Djangss", url: "https://github.com/Djangss/gantry/issues/41",
-  body: "From the brainstorm on board UX.", labels: [{ name: "proposed", color: "fbca04" }], comments: [], pr: null,
+  body: "From the brainstorm on board UX.", labels: [{ name: "proposed", color: "fbca04" }], assignees: [], comments: [], pr: null,
 };
 const proposedPR = {
   number: 42, title: "docs: describe the proposal inbox", state: "open", user: "Djangss", url: "https://github.com/Djangss/gantry/pull/42",
-  body: "Updates docs/design.md.", labels: [{ name: "proposed", color: "fbca04" }], comments: [],
+  body: "Updates docs/design.md.", labels: [{ name: "proposed", color: "fbca04" }], assignees: [], comments: [],
   pr: { merged: false, draft: false, reviews: [], checks: [] },
 };
 const inboxRow = (i: typeof proposedIssue | typeof proposedPR, isPR: boolean) => ({
@@ -55,6 +55,7 @@ export async function mockApi(page: Page) {
   let commented: unknown = null;
   let watched: { content: string } | null = null;
   let approved: unknown = null;
+  const actions: { created: unknown; updates: unknown[]; converted: unknown } = { created: null, updates: [], converted: null };
   await page.route("**/api/**", async (route) => {
     const req = route.request();
     const p = new URL(req.url()).pathname;
@@ -70,7 +71,7 @@ export async function mockApi(page: Page) {
       }
       return watched ? json({ content: watched.content, sha: "w2" }) : json({ error: "not found", code: "not_found" }, 404);
     }
-    if (p === "/api/repos/Djangss/gantry/issues") {
+    if (p === "/api/repos/Djangss/gantry/issues" && req.method() === "GET") {
       const kind = new URL(req.url()).searchParams.get("kind");
       return json(kind === "pr" ? repoPRs : repoIssues);
     }
@@ -88,6 +89,23 @@ export async function mockApi(page: Page) {
     if (p === "/api/notifications") return json(notifications.map((n) => ({ ...n, unread: !readIds.includes(n.id) })));
     if (p.startsWith("/api/notifications/threads/") && req.method() === "PATCH") {
       readIds.push(p.split("/").pop()!);
+      return route.fulfill({ status: 204 });
+    }
+    if (p === "/api/repos/Djangss/gantry/labels") return json([{ name: "ui", color: "a2eeef" }, { name: "docs", color: "0075ca" }]);
+    if (p === "/api/repos/Djangss/gantry/assignees") return json(["Djangss", "bob"]);
+    if (p === "/api/repos/Djangss/gantry/issues" && req.method() === "POST") {
+      actions.created = req.postDataJSON();
+      return json({ number: 9, url: "https://github.com/Djangss/gantry/issues/9" }, 201);
+    }
+    if (p === "/api/repos/Djangss/gantry/issues/9") {
+      if (req.method() === "PATCH") {
+        actions.updates.push(req.postDataJSON());
+        return route.fulfill({ status: 204 });
+      }
+      return json({ ...issue, number: 9, title: "Search across notes", pr: null, labels: [{ name: "ui", color: "a2eeef" }] });
+    }
+    if (p === "/api/projects/P1/items/I4/convert") {
+      actions.converted = req.postDataJSON();
       return route.fulfill({ status: 204 });
     }
     if (p === "/api/inbox") return json(approved ? [inboxRow(proposedPR, true)] : [inboxRow(proposedIssue, false), inboxRow(proposedPR, true)]);
@@ -115,5 +133,5 @@ export async function mockApi(page: Page) {
     if (p === "/api/repos/Djangss/notes/contents/notes/board-ux-ideas.md") return json({ content: note, sha: "s1" });
     return json({ error: "not mocked: " + p, code: "not_found" }, 404);
   });
-  return { patched: () => patched, commented: () => commented, watched: () => watched, approved: () => approved };
+  return { patched: () => patched, commented: () => commented, watched: () => watched, approved: () => approved, actions: () => actions };
 }

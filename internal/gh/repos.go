@@ -43,15 +43,16 @@ type PR struct {
 }
 
 type Issue struct {
-	Number   int       `json:"number"`
-	Title    string    `json:"title"`
-	State    string    `json:"state"`
-	Body     string    `json:"body"`
-	URL      string    `json:"url"`
-	User     string    `json:"user"`
-	Labels   []Label   `json:"labels"`
-	Comments []Comment `json:"comments"`
-	PR       *PR       `json:"pr"`
+	Number    int       `json:"number"`
+	Title     string    `json:"title"`
+	State     string    `json:"state"`
+	Body      string    `json:"body"`
+	URL       string    `json:"url"`
+	User      string    `json:"user"`
+	Labels    []Label   `json:"labels"`
+	Assignees []string  `json:"assignees"`
+	Comments  []Comment `json:"comments"`
+	PR        *PR       `json:"pr"`
 }
 
 // IssueSummary is one row of a repo's issue or pull request list.
@@ -152,7 +153,10 @@ func (c *Client) Issue(ctx context.Context, token, owner, repo string, n int) (*
 		return nil, wrap(err)
 	}
 	is := &Issue{Number: gi.GetNumber(), Title: gi.GetTitle(), State: gi.GetState(), Body: gi.GetBody(), URL: gi.GetHTMLURL(),
-		User: gi.GetUser().GetLogin(), Labels: []Label{}, Comments: []Comment{}}
+		User: gi.GetUser().GetLogin(), Labels: []Label{}, Assignees: []string{}, Comments: []Comment{}}
+	for _, a := range gi.Assignees {
+		is.Assignees = append(is.Assignees, a.GetLogin())
+	}
 	for _, l := range gi.Labels {
 		is.Labels = append(is.Labels, Label{Name: l.GetName(), Color: l.GetColor()})
 	}

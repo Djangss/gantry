@@ -65,7 +65,7 @@ func TestCloseIssueNotPlanned(t *testing.T) {
 		json.NewDecoder(r.Body).Decode(&got)
 		fmt.Fprint(w, `{}`)
 	}})
-	if err := c.Close(ctx, "tok", "o", "r", 4, false); err != nil {
+	if err := c.Close(ctx, "tok", "o", "r", 4, false, "not_planned"); err != nil {
 		t.Fatal(err)
 	}
 	if got["state"] != "closed" || got["state_reason"] != "not_planned" {
@@ -79,7 +79,7 @@ func TestClosePR(t *testing.T) {
 		json.NewDecoder(r.Body).Decode(&got)
 		fmt.Fprint(w, `{}`)
 	}})
-	if err := c.Close(ctx, "tok", "o", "r", 4, true); err != nil || got["state"] != "closed" {
+	if err := c.Close(ctx, "tok", "o", "r", 4, true, ""); err != nil || got["state"] != "closed" {
 		t.Fatalf("%v %v", err, got)
 	}
 }
@@ -112,5 +112,12 @@ func TestPRFiles(t *testing.T) {
 	fs, err := c.PRFiles(ctx, "tok", "o", "r", 4)
 	if err != nil || len(fs) != 2 || fs[0].Patch == "" || fs[1].Patch != "" || fs[1].Status != "added" {
 		t.Fatalf("%v %+v", err, fs)
+	}
+}
+
+func TestMarkReadyRejectedPayload(t *testing.T) {
+	c := fake(t, map[string]http.HandlerFunc{"POST /graphql": body(`{"data":{"markPullRequestReadyForReview":null},"errors":[{"type":"FORBIDDEN","message":"no"}]}`)})
+	if err := c.MarkReady(ctx, "tok", "PR_x"); err == nil {
+		t.Fatal("null payload treated as success")
 	}
 }

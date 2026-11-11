@@ -74,7 +74,7 @@ test("a failed sidebar list can be retried", async ({ page }) => {
   const nav = page.getByRole("navigation", { name: "Main" });
   await expect(nav).toContainText("GitHub refused the request");
   await nav.getByRole("button", { name: "Retry" }).click();
-  await expect(nav.getByRole("link", { name: "Djangss/gantry" })).toBeVisible();
+  await expect(nav.getByRole("link", { name: "Djangss/gantry", exact: true })).toBeVisible();
 });
 
 test("a repo page lists issues and PRs and opens the drawer", async ({ page }) => {
@@ -83,7 +83,7 @@ test("a repo page lists issues and PRs and opens the drawer", async ({ page }) =
   const nav = page.getByRole("navigation", { name: "Main" });
   await expect(nav.getByText("Shared with you")).toBeVisible();
   await expect(nav.getByRole("link", { name: "golang/go" })).toBeVisible();
-  await nav.getByRole("link", { name: "Djangss/gantry" }).click();
+  await nav.getByRole("link", { name: "Djangss/gantry", exact: true }).click();
   await expect(page.getByRole("button", { name: /Search across notes/ })).toBeVisible();
   await page.getByRole("searchbox", { name: "Search issues" }).fill("kanban");
   await expect(page.getByRole("button", { name: /Search across notes/ })).toHaveCount(0);

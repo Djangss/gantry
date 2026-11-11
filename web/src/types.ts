@@ -31,6 +31,7 @@ export type Issue = {
   url: string;
   user: string;
   labels: Label[];
+  assignees: string[];
   comments: Comment[];
   pr: PR | null;
 };

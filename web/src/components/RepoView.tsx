@@ -4,6 +4,7 @@ import { Link, useParams, useSearchParams } from "react-router";
 import { api, errorText } from "@/api";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import ItemDrawer from "@/components/ItemDrawer";
+import NewIssue from "@/components/NewIssue";
 import QueryError from "@/components/QueryError";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -73,6 +74,7 @@ export default function RepoView() {
           </Button>
         )}
       </header>
+      <NewIssue full={full} onCreated={(n) => setParams({ ...Object.fromEntries(params), item: `${full}#${n}` })} />
       {watchError && <p className="text-sm text-destructive">{watchError}</p>}
       <nav aria-label="Repo sections" className="flex flex-wrap items-center gap-1 border-b pb-2">
         <Button size="sm" variant={kind === "issue" ? "secondary" : "ghost"} aria-pressed={kind === "issue"} onClick={() => set({ tab: "issues" })}>

@@ -71,7 +71,7 @@ func (s *Server) reject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err == nil {
-		err = s.gh.Close(ctx, tok, owner, repo, n, isPR)
+		err = s.gh.Close(ctx, tok, owner, repo, n, isPR, "not_planned")
 	}
 	if err != nil {
 		s.fail(w, err)

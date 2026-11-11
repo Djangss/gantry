@@ -8,6 +8,7 @@ import Markdown from "react-markdown";
 import { Link, useNavigate } from "react-router";
 import remarkGfm from "remark-gfm";
 import { api, errorText, send } from "@/api";
+import IssueActions from "@/components/IssueActions";
 import LabelChip from "@/components/LabelChip";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -135,6 +136,7 @@ export default function ItemDrawer({ itemRef, onClose }: { itemRef: string; onCl
           {i && (
             <>
               {r && i.state === "open" && i.labels.some((l) => l.name === "proposed") && <ProposalActions itemRef={itemRef} base={base} isPR={!!i.pr} isDraft={i.pr?.draft} />}
+              {r && <IssueActions owner={r.owner} repo={r.repo} base={base} issue={i} />}
               {i.pr && <PRStatus pr={i.pr} />}
               <article className="prose prose-sm max-w-none dark:prose-invert">
                 <Markdown remarkPlugins={[remarkGfm]}>{i.body || "_No description._"}</Markdown>
