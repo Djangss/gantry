@@ -16,7 +16,7 @@ export default function SearchDialog({ open, onOpenChange }: { open: boolean; on
   const [text, setText] = useState("");
   const [q, setQ] = useState("");
   useEffect(() => {
-    const t = setTimeout(() => setQ(text.trim()), 250);
+    const t = setTimeout(() => setQ(text.trim()), 450);
     return () => clearTimeout(t);
   }, [text]);
   const res = useQuery(searchQuery(q, open));

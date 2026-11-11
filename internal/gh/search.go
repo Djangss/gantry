@@ -2,17 +2,16 @@ package gh
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/google/go-github/v93/github"
 )
 
 // searchKinds runs one search per kind, since /search/issues needs is:issue or is:pr.
-func searchKinds(ctx context.Context, g *github.Client, tail string, perPage int) ([]IssueSummary, error) {
+func searchKinds(ctx context.Context, g *github.Client, tail string, perPage int, advanced bool) ([]IssueSummary, error) {
 	out := []IssueSummary{}
 	for _, kind := range []string{"is:issue", "is:pr"} {
 		res, _, err := g.Search.Issues(ctx, kind+" "+tail,
-			&github.SearchOptions{Sort: "updated", Order: "desc", ListOptions: github.ListOptions{PerPage: perPage}})
+			&github.SearchOptions{Sort: "updated", Order: "desc", AdvancedSearch: github.Ptr(advanced), ListOptions: github.ListOptions{PerPage: perPage}})
 		if err != nil {
 			return nil, wrap(err)
 		}
@@ -30,26 +29,12 @@ func searchKinds(ctx context.Context, g *github.Client, tail string, perPage int
 }
 
 // Search finds issues and PRs login is involved in, or that sit in login's own repos, whose text matches q.
-// Legacy search has no OR, so that is two queries per kind, merged without duplicates.
-// shortcut: top 10 per query; refine the query rather than paging.
+// OR needs advanced search, so one query per kind covers both scopes.
+// shortcut: top 10 per kind; refine the query rather than paging.
 func (c *Client) Search(ctx context.Context, token, login, q string) ([]IssueSummary, error) {
 	g, err := c.rest(token)
 	if err != nil {
 		return nil, err
 	}
-	out := []IssueSummary{}
-	seen := map[string]bool{}
-	for _, scope := range []string{"involves:", "user:"} {
-		res, err := searchKinds(ctx, g, scope+login+" "+q, 10)
-		if err != nil {
-			return nil, err
-		}
-		for _, it := range res {
-			if k := fmt.Sprint(it.Repo, "#", it.Number, it.IsPR); !seen[k] {
-				seen[k] = true
-				out = append(out, it)
-			}
-		}
-	}
-	return out, nil
+	return searchKinds(ctx, g, "(involves:"+login+" OR user:"+login+") "+q, 10, true)
 }

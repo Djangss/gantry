@@ -22,7 +22,7 @@ func (c *Client) Proposed(ctx context.Context, token, login string) ([]IssueSumm
 	if err != nil {
 		return nil, err
 	}
-	return searchKinds(ctx, g, "is:open label:proposed author:"+login, 100)
+	return searchKinds(ctx, g, "is:open label:proposed author:"+login, 100, false)
 }
 
 // repoFromURL turns ".../repos/owner/repo" into "owner/repo".
