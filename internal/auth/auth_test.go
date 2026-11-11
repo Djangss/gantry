@@ -97,9 +97,22 @@ func TestCallbackAllowedCaseInsensitive(t *testing.T) {
 }
 
 func TestCallbackRejectsOtherLogin(t *testing.T) {
-	w := callback(newAuth(t, fakeGitHub(t, "mallory")), "good-code", "s1", "s1")
+	gh := fakeGitHub(t, "mallory")
+	var revoked string
+	gh.Config.Handler.(*http.ServeMux).HandleFunc("DELETE /applications/id/token", func(w http.ResponseWriter, r *http.Request) {
+		var in struct {
+			AccessToken string `json:"access_token"`
+		}
+		json.NewDecoder(r.Body).Decode(&in)
+		revoked = in.AccessToken
+		w.WriteHeader(204)
+	})
+	w := callback(newAuth(t, gh), "good-code", "s1", "s1")
 	if w.Code != http.StatusForbidden || session(w) != nil {
 		t.Fatalf("got %d, cookie %v", w.Code, session(w))
+	}
+	if revoked != "tok-123" {
+		t.Fatalf("rejected token not revoked, got %q", revoked)
 	}
 }
 
