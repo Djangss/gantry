@@ -130,6 +130,29 @@ func TestWebhookSyncAddsHooksToAdminRepos(t *testing.T) {
 	}
 }
 
+func TestWebhookSyncRetriesAfterFailure(t *testing.T) {
+	posts := 0
+	h, c := testServer(t, map[string]http.HandlerFunc{
+		"GET /user/repos": func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, `[{"full_name":"o/a","permissions":{"admin":true}}]`)
+		},
+		"GET /repos/o/a/hooks": func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, `[]`) },
+		"POST /repos/o/a/hooks": func(w http.ResponseWriter, r *http.Request) {
+			if posts++; posts == 1 {
+				http.Error(w, "boom", 500)
+				return
+			}
+			w.WriteHeader(201)
+			fmt.Fprint(w, `{"id":1}`)
+		},
+	}, withSecret)
+	call(h, c, "POST", "/api/webhooks/sync", "")
+	w := call(h, c, "POST", "/api/webhooks/sync", "")
+	if posts != 2 || !strings.Contains(w.Body.String(), `"added":["o/a"]`) {
+		t.Fatalf("posts=%d %s", posts, w.Body)
+	}
+}
+
 func TestWebhookSyncOffWithoutSecret(t *testing.T) {
 	h, c := testServer(t, nil)
 	if w := call(h, c, "POST", "/api/webhooks/sync", ""); w.Code != 200 || !strings.Contains(w.Body.String(), `"enabled":false`) {
