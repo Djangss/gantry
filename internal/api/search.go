@@ -1,6 +1,7 @@
 package api
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/Djangss/gantry/internal/auth"
@@ -21,8 +22,10 @@ func (s *Server) search(w http.ResponseWriter, r *http.Request) {
 	}
 	sess, _ := auth.FromContext(r.Context())
 	var err error
-	if out.Notes, err = s.links.Search(r.Context(), sess.Token, q); err == nil {
-		out.Issues, err = s.gh.Search(r.Context(), sess.Token, sess.Login, q)
+	if out.Notes, err = s.links.Search(r.Context(), sess.Token, q); err != nil {
+		slog.Warn("search: notes index unavailable", "err", err)
+		out.Notes = []notes.Entry{}
 	}
+	out.Issues, err = s.gh.Search(r.Context(), sess.Token, sess.Login, q)
 	s.reply(w, out, err)
 }

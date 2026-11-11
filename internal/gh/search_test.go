@@ -14,15 +14,16 @@ func TestSearchScopesToUserAndText(t *testing.T) {
 		fmt.Fprint(w, `{"items":[{"number":2,"title":"Idea","state":"open","repository_url":"https://api.github.com/repos/o/a","labels":[]}]}`)
 	}})
 	out, err := c.Search(ctx, "tok", "Djangss", "kanban board")
-	if err != nil || len(out) != 2 || out[0].Repo != "o/a" {
+	if err != nil || len(out) != 1 || out[0].Repo != "o/a" {
 		t.Fatalf("%+v %v", out, err)
 	}
-	if len(qs) != 2 || !strings.Contains(qs[0], "is:issue") || !strings.Contains(qs[1], "is:pr") {
+	if len(qs) != 4 || !strings.Contains(qs[0], "is:issue") || !strings.Contains(qs[1], "is:pr") {
 		t.Fatalf("queries %v", qs)
 	}
-	for _, q := range qs {
-		if !strings.Contains(q, "involves:Djangss") || !strings.Contains(q, "kanban board") {
-			t.Errorf("query %q", q)
+	for i, q := range qs {
+		scope := []string{"involves:Djangss", "user:Djangss"}[i/2]
+		if !strings.Contains(q, scope) || !strings.Contains(q, "kanban board") {
+			t.Errorf("query %q lacks %q", q, scope)
 		}
 	}
 }

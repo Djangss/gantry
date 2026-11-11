@@ -19,7 +19,7 @@ export default function SearchDialog({ open, onOpenChange }: { open: boolean; on
     const t = setTimeout(() => setQ(text.trim()), 250);
     return () => clearTimeout(t);
   }, [text]);
-  const res = useQuery(searchQuery(q));
+  const res = useQuery(searchQuery(q, open));
   const empty = res.data && !res.data.notes.length && !res.data.issues.length;
 
   function go(to: string) {

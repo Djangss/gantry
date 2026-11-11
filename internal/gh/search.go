@@ -2,6 +2,7 @@ package gh
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/go-github/v93/github"
 )
@@ -28,12 +29,27 @@ func searchKinds(ctx context.Context, g *github.Client, tail string, perPage int
 	return out, nil
 }
 
-// Search finds issues and PRs login is involved in whose text matches q.
-// shortcut: top 10 of each kind; refine the query rather than paging.
+// Search finds issues and PRs login is involved in, or that sit in login's own repos, whose text matches q.
+// Legacy search has no OR, so that is two queries per kind, merged without duplicates.
+// shortcut: top 10 per query; refine the query rather than paging.
 func (c *Client) Search(ctx context.Context, token, login, q string) ([]IssueSummary, error) {
 	g, err := c.rest(token)
 	if err != nil {
 		return nil, err
 	}
-	return searchKinds(ctx, g, "involves:"+login+" "+q, 10)
+	out := []IssueSummary{}
+	seen := map[string]bool{}
+	for _, scope := range []string{"involves:", "user:"} {
+		res, err := searchKinds(ctx, g, scope+login+" "+q, 10)
+		if err != nil {
+			return nil, err
+		}
+		for _, it := range res {
+			if k := fmt.Sprint(it.Repo, "#", it.Number, it.IsPR); !seen[k] {
+				seen[k] = true
+				out = append(out, it)
+			}
+		}
+	}
+	return out, nil
 }
