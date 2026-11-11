@@ -1,5 +1,5 @@
-import { expect, test } from "vitest";
-import { affects } from "./events";
+import { expect, test, vi } from "vitest";
+import { affects, recoverClosed } from "./events";
 
 const keys: unknown[][] = [
   ["issue", "Djangss/gantry#7"],
@@ -46,4 +46,20 @@ test("a push to the notes repo refreshes its tree and links, never an open file"
 test("repository events refresh the repo lists; unknown events refresh nothing", () => {
   expect(hit({ type: "repository", repo: "Djangss/new", number: 0 })).toEqual(["repos"]);
   expect(hit({ type: "star", repo: "Djangss/gantry", number: 0 })).toEqual([]);
+});
+
+test("recoverClosed checks the session then reopens a closed source", async () => {
+  const check = vi.fn().mockRejectedValue(new Error("boom"));
+  const reopen = vi.fn();
+  await recoverClosed({ readyState: 2 }, check, reopen);
+  expect(check).toHaveBeenCalledOnce();
+  expect(reopen).toHaveBeenCalledOnce();
+});
+
+test("recoverClosed leaves a reconnecting source alone", async () => {
+  const check = vi.fn();
+  const reopen = vi.fn();
+  await recoverClosed({ readyState: 0 }, check, reopen);
+  expect(check).not.toHaveBeenCalled();
+  expect(reopen).not.toHaveBeenCalled();
 });
