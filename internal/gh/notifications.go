@@ -2,9 +2,7 @@ package gh
 
 import (
 	"context"
-	"net/http"
 	"regexp"
-	"strings"
 	"time"
 )
 
@@ -39,7 +37,7 @@ func (c *Client) Notifications(ctx context.Context, token string, participating 
 		p += "&participating=true"
 	}
 	if err := c.do(ctx, token, "GET", p, "", nil, &raw); err != nil {
-		return nil, notifErr(err)
+		return nil, err
 	}
 	out := []Notification{}
 	for _, n := range raw {
@@ -54,14 +52,5 @@ func (c *Client) Notifications(ctx context.Context, token string, participating 
 }
 
 func (c *Client) MarkNotificationRead(ctx context.Context, token, id string) error {
-	return notifErr(c.do(ctx, token, "PATCH", "/notifications/threads/"+id, "", nil, nil))
-}
-
-// notifErr flags a 403 whose granted scopes (X-OAuth-Scopes) lack "notifications": a session from before that scope existed.
-func notifErr(err error) error {
-	if e, ok := err.(*Error); ok && e.Status == http.StatusForbidden && !e.RateLimited && e.Scopes != "" &&
-		!strings.Contains(", "+e.Scopes+",", ", notifications,") {
-		e.MissingScope = true
-	}
-	return err
+	return c.do(ctx, token, "PATCH", "/notifications/threads/"+id, "", nil, nil)
 }

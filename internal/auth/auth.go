@@ -118,7 +118,7 @@ func (a *Auth) Login(w http.ResponseWriter, r *http.Request) {
 	q := url.Values{
 		"client_id":    {a.opt.ClientID},
 		"redirect_uri": {a.opt.BaseURL + "/auth/callback"},
-		"scope":        {"repo project notifications"},
+		"scope":        {"repo project"},
 		"state":        {state},
 	}
 	http.Redirect(w, r, a.opt.WebURL+"/login/oauth/authorize?"+q.Encode(), http.StatusFound)

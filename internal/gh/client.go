@@ -33,12 +33,10 @@ func (c *Client) ClearCache() { c.cache.Clear() }
 
 // Error is a GitHub failure. Status 0 means the request never got a response.
 type Error struct {
-	Status       int
-	Message      string
-	Reset        time.Time
-	RateLimited  bool
-	Scopes       string // X-OAuth-Scopes the token was granted
-	MissingScope bool
+	Status      int
+	Message     string
+	Reset       time.Time
+	RateLimited bool
 }
 
 func (e *Error) Error() string { return fmt.Sprintf("github %d: %s", e.Status, e.Message) }
@@ -90,7 +88,7 @@ func errorFrom(resp *http.Response) *Error {
 		Message string `json:"message"`
 	}
 	json.NewDecoder(io.LimitReader(resp.Body, 1<<16)).Decode(&b)
-	e := &Error{Status: resp.StatusCode, Message: b.Message, Scopes: resp.Header.Get("X-OAuth-Scopes")}
+	e := &Error{Status: resp.StatusCode, Message: b.Message}
 	if resp.StatusCode == http.StatusTooManyRequests ||
 		(resp.StatusCode == http.StatusForbidden && resp.Header.Get("X-RateLimit-Remaining") == "0") {
 		e.RateLimited = true

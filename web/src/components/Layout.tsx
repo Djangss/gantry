@@ -13,7 +13,7 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { inboxQuery } from "@/lib/inbox";
 import { useLiveUpdates } from "@/lib/events";
 import { meQuery } from "@/lib/me";
-import { markRead, needsSignIn, notificationsQuery } from "@/lib/notifications";
+import { markRead, notificationsQuery, unreadCount } from "@/lib/notifications";
 import { groupRepos, parseRepoName, watchedQueryOptions } from "@/lib/repos";
 import { cn } from "@/lib/utils";
 import type { Notification, Project, Repo } from "@/types";
@@ -45,22 +45,17 @@ function Notifications() {
     onError: (e) => toast.error(`Could not mark as read: ${errorText(e)}`),
   });
   const unread = list.data?.filter((n) => n.unread) ?? [];
+  const count = unreadCount(list.data);
   return (
     <Section title="Notifications">
-      {list.isError && needsSignIn(list.error) && (
-        <p className="px-2 text-sm">
-          Sign in again to see notifications.{" "}
-          <a href="/auth/login" className="font-semibold underline">Sign in</a>
-        </p>
-      )}
-      {list.isError && !needsSignIn(list.error) && <QueryError className="px-2 text-rail-foreground" error={list.error} retry={list.refetch} />}
+      {list.isError && <QueryError className="px-2 text-rail-foreground" error={list.error} retry={list.refetch} />}
       {list.data && (
         <p className="flex items-center gap-2.5 px-2 text-sm">
           <Bell aria-hidden className="size-4 shrink-0 text-rail-muted" />
-          {unread.length ? "Unread" : "All caught up"}
-          {!!unread.length && (
+          {count ? "Unread" : "All caught up"}
+          {!!count && (
             <span className="ml-auto rounded-sm bg-hazard px-1.5 text-xs font-semibold text-hazard-foreground">
-              {unread.length}
+              {count}
               <span className="sr-only"> unread notifications</span>
             </span>
           )}
@@ -86,6 +81,11 @@ function Notifications() {
           </li>
         ))}
       </ul>
+      {unread.length > 5 && (
+        <a href="https://github.com/notifications" target="_blank" rel="noreferrer" className="block px-2 text-xs text-rail-muted underline">
+          +{unread.length - 5} more on GitHub
+        </a>
+      )}
     </Section>
   );
 }

@@ -71,7 +71,7 @@ func TestLoginRedirect(t *testing.T) {
 		t.Fatalf("location %s", loc)
 	}
 	q := loc.Query()
-	if q.Get("scope") != "repo project notifications" || q.Get("redirect_uri") != "https://gantry.test/auth/callback" {
+	if q.Get("scope") != "repo project" || q.Get("redirect_uri") != "https://gantry.test/auth/callback" {
 		t.Fatalf("query %v", q)
 	}
 	var state string

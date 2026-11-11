@@ -62,4 +62,4 @@ export type Notification = {
   updatedAt: string;
 };
 
-export type PRFile ={ filename: string; status: string; patch: string };
+export type PRFile = { filename: string; status: string; patch: string };

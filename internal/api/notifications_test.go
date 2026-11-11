@@ -21,14 +21,13 @@ func TestNotificationsMapRefsAndDefaultParticipating(t *testing.T) {
 	}
 }
 
-func TestNotificationsMissingScope(t *testing.T) {
+func TestNotificationsForbiddenIsPlainForbidden(t *testing.T) {
 	h, c := testServer(t, map[string]http.HandlerFunc{"GET /notifications": func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("X-OAuth-Scopes", "project, repo")
 		w.WriteHeader(403)
 		fmt.Fprint(w, `{"message":"nope"}`)
 	}})
 	w := call(h, c, "GET", "/api/notifications", "")
-	if w.Code != 403 || !strings.Contains(w.Body.String(), `"code":"missing_scope"`) || w.Result().Header.Get("Set-Cookie") != "" {
+	if w.Code != 403 || !strings.Contains(w.Body.String(), `"code":"forbidden"`) {
 		t.Fatalf("%d %s", w.Code, w.Body)
 	}
 }

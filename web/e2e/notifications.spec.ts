@@ -19,13 +19,11 @@ test("a notification on a PR opens the drawer", async ({ page }) => {
   await expect(page.getByRole("dialog")).toBeVisible();
 });
 
-test("a token without the scope shows a sign-in link and keeps the session", async ({ page }) => {
+test("more than five unread link to GitHub", async ({ page }) => {
   await mockApi(page);
-  await page.route("**/api/notifications", (r) =>
-    r.fulfill({ status: 403, json: { error: "Sign in again to grant the notifications scope", code: "missing_scope" } }));
+  const many = Array.from({ length: 7 }, (_, i) => ({ id: `${200 + i}`, unread: true, reason: "mention", title: `Thread ${i}`, type: "Issue", repo: "o/r", ref: "", updatedAt: "2026-11-10T12:00:00Z" }));
+  await page.route("**/api/notifications", (r) => r.fulfill({ json: many }));
   await page.goto("/inbox");
   const nav = page.getByRole("navigation", { name: "Main" });
-  await expect(nav.getByText("Sign in again to see notifications.")).toBeVisible();
-  await expect(nav.getByRole("link", { name: "Sign in", exact: true })).toHaveAttribute("href", "/auth/login");
-  await expect(nav.getByRole("link", { name: /Inbox/ })).toBeVisible();
+  await expect(nav.getByRole("link", { name: "+2 more on GitHub" })).toHaveAttribute("href", "https://github.com/notifications");
 });
