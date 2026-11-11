@@ -44,7 +44,13 @@ const inboxRow = (i: typeof proposedIssue | typeof proposedPR, isPR: boolean) =>
   isPR, isDraft: false, comments: 0, updatedAt: "2026-11-10T12:00:00Z",
 });
 
+const notifications = [
+  { id: "101", unread: true, reason: "review_requested", title: "Review the kanban board", type: "PullRequest", repo: "Djangss/gantry", ref: "Djangss/gantry#7", updatedAt: "2026-11-10T12:00:00Z" },
+  { id: "102", unread: true, reason: "mention", title: "Release 1.0 notes", type: "Release", repo: "acme/api", ref: "", updatedAt: "2026-11-10T11:00:00Z" },
+];
+
 export async function mockApi(page: Page) {
+  const readIds: string[] = [];
   let patched: unknown = null;
   let commented: unknown = null;
   let watched: { content: string } | null = null;
@@ -78,6 +84,11 @@ export async function mockApi(page: Page) {
     if (p === "/api/repos/Djangss/gantry/issues/7/comments" && req.method() === "POST") {
       commented = req.postDataJSON();
       return json({ id: 2, user: "Djangss", body: "x", createdAt: "2026-11-10T10:00:00Z" }, 201);
+    }
+    if (p === "/api/notifications") return json(notifications.map((n) => ({ ...n, unread: !readIds.includes(n.id) })));
+    if (p.startsWith("/api/notifications/threads/") && req.method() === "PATCH") {
+      readIds.push(p.split("/").pop()!);
+      return route.fulfill({ status: 204 });
     }
     if (p === "/api/inbox") return json(approved ? [inboxRow(proposedPR, true)] : [inboxRow(proposedIssue, false), inboxRow(proposedPR, true)]);
     if (p === "/api/repos/Djangss/gantry/issues/41/approve" && req.method() === "POST") {
