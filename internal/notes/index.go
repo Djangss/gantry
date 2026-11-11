@@ -39,6 +39,7 @@ type indexed struct {
 	entry Entry
 	refs  []string // lower-cased
 	sha   string   // blob SHA the entry was parsed from
+	text  string   // lower-cased searchable text, capped at maxText bytes
 }
 
 func New(src Source, owner, repo string) *Index {
@@ -59,10 +60,12 @@ func parse(path, sha, content string) indexed {
 	k := kind(path)
 	var title string
 	var refs []string
+	text := content
 	if k == "note" {
 		title, refs = ParseNote(content)
 	} else {
 		refs = ParseDrawing(content)
+		text = drawingText(content)
 	}
 	if title == "" {
 		title = strings.TrimSuffix(pathpkg.Base(path), pathpkg.Ext(path))
@@ -71,7 +74,7 @@ func parse(path, sha, content string) indexed {
 	for i, r := range refs {
 		lower[i] = strings.ToLower(r)
 	}
-	return indexed{entry: Entry{Path: path, Title: title, Kind: k}, refs: lower, sha: sha}
+	return indexed{entry: Entry{Path: path, Title: title, Kind: k}, refs: lower, sha: sha, text: strings.ToLower(text[:min(len(text), maxText)])}
 }
 
 func (x *Index) Rebuild(ctx context.Context, token string) error {
@@ -142,17 +145,21 @@ func skippable(err error) bool {
 	return errors.As(err, &e) && !e.RateLimited && (e.Status == 400 || e.Status == 403 || e.Status == 404 || e.Status == 422)
 }
 
-func (x *Index) Lookup(ctx context.Context, token, ref string) ([]Entry, error) {
+// ensure scans on first use or after Invalidate.
+func (x *Index) ensure(ctx context.Context, token string) error {
 	x.build.Lock()
+	defer x.build.Unlock()
 	x.mu.Lock()
 	built := x.built
 	x.mu.Unlock()
-	var err error
-	if !built {
-		err = x.scan(ctx, token)
+	if built {
+		return nil
 	}
-	x.build.Unlock()
-	if err != nil {
+	return x.scan(ctx, token)
+}
+
+func (x *Index) Lookup(ctx context.Context, token, ref string) ([]Entry, error) {
+	if err := x.ensure(ctx, token); err != nil {
 		return nil, err
 	}
 	ref = strings.ToLower(ref)

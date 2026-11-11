@@ -63,3 +63,4 @@ export type Notification = {
 };
 
 export type PRFile = { filename: string; status: string; patch: string };
+export type SearchResults = { notes: LinkEntry[]; issues: IssueSummary[] };
