@@ -41,6 +41,8 @@ func (s *Server) fail(w http.ResponseWriter, err error) {
 	case e.RateLimited:
 		reset := e.Reset.UTC()
 		writeJSON(w, http.StatusTooManyRequests, apiError{Error: "GitHub rate limit hit", Code: "rate_limited", Reset: &reset})
+	case e.MissingScope:
+		writeJSON(w, http.StatusForbidden, apiError{Error: "Sign in again to grant the notifications scope", Code: "missing_scope"})
 	case e.Status == http.StatusForbidden:
 		writeJSON(w, e.Status, apiError{Error: e.Message, Code: "forbidden"})
 	case e.Status == http.StatusNotFound:
