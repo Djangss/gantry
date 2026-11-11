@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"maps"
 	pathpkg "path"
 	"slices"
 	"strings"
@@ -85,7 +86,7 @@ func (x *Index) scan(ctx context.Context, token string) error {
 		return err
 	}
 	x.mu.Lock()
-	old := x.files
+	old := maps.Clone(x.files)
 	x.mu.Unlock()
 	files := map[string]indexed{}
 	var (
