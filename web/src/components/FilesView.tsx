@@ -68,7 +68,9 @@ export default function FilesView() {
     const kind = params.get("new");
     if (!isNotes || (kind !== "note" && kind !== "drawing")) return;
     const link = params.get("link") ?? undefined;
-    setParams(root ? { root } : {});
+    const next = new URLSearchParams(params); // keep root and path; replace so Back does not reopen the dialog
+    for (const k of ["new", "name", "link"]) next.delete(k);
+    setParams(next, { replace: true });
     setName(params.get("name") ?? "");
     startCreate(kind, link);
   }, [isNotes, params.get("new")]); // eslint-disable-line react-hooks/exhaustive-deps

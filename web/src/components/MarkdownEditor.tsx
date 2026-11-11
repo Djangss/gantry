@@ -34,7 +34,7 @@ export default function MarkdownEditor({ owner, repo, path, message }: Props) {
     queryFn: () => api<LinkEntry[]>(`/api/backlinks?slug=${encodeURIComponent(slugOf(path))}`),
     enabled: isNotes,
   });
-  const wiki = useMemo(() => (isNotes ? [remarkWiki(`${owner}/${repo}`, notes.data ?? [])] : []), [isNotes, owner, repo, notes.data]);
+  const wiki = useMemo(() => (isNotes ? [remarkWiki(`${owner}/${repo}`, notes.data ?? [], path)] : []), [isNotes, owner, repo, notes.data, path]);
   if (f.file.isPending) return <Skeleton className="m-4 h-96" />;
   if (f.file.isError) return <QueryError className="p-4" error={f.file.error} retry={f.file.refetch} />;
   const { title, body } = splitFrontmatter(f.value);

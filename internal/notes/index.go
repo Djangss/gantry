@@ -38,7 +38,7 @@ type Index struct {
 type indexed struct {
 	entry Entry
 	refs  []string // lower-cased
-	wiki  []string // lower-cased [[slug]] targets
+	wiki  []string // slugified [[target]]s
 	sha   string   // blob SHA the entry was parsed from
 	text  string   // lower-cased searchable text, capped at maxText bytes
 }
@@ -184,7 +184,7 @@ func (x *Index) Lookup(ctx context.Context, token, ref string) ([]Entry, error) 
 
 // Backlinks lists the notes whose body links to [[slug]].
 func (x *Index) Backlinks(ctx context.Context, token, slug string) ([]Entry, error) {
-	slug = strings.ToLower(slug)
+	slug = Slugify(slug)
 	return x.find(ctx, token, func(f indexed) bool { return slices.Contains(f.wiki, slug) })
 }
 

@@ -44,3 +44,9 @@ func TestWikiLinks(t *testing.T) {
 		t.Errorf("got %s", got)
 	}
 }
+
+func TestWikiLinksSlugifyLikeNoteCreation(t *testing.T) {
+	if got := fmt.Sprint(WikiLinks("[[Not Yet]] [[Idées d'été|x]]")); got != "[not-yet idees-d-ete]" {
+		t.Errorf("got %s", got)
+	}
+}

@@ -72,8 +72,27 @@ var (
 	inlineRE = regexp.MustCompile("`[^`\n]*`")
 )
 
-// WikiLinks returns the lower-cased [[slug]] and [[slug|label]] targets in a note body,
+var accents = strings.NewReplacer(
+	"à", "a", "á", "a", "â", "a", "ã", "a", "ä", "a", "å", "a", "ç", "c", "è", "e", "é", "e", "ê", "e", "ë", "e",
+	"ì", "i", "í", "i", "î", "i", "ï", "i", "ñ", "n", "ò", "o", "ó", "o", "ô", "o", "õ", "o", "ö", "o",
+	"ù", "u", "ú", "u", "û", "u", "ü", "u", "ý", "y", "ÿ", "y")
+
+// Slugify mirrors slugify in web/src/lib/frontmatter.ts, the rule that names created notes; keep both in sync.
+// shortcut: strips Latin-1 accents only (no Unicode normalisation without a dependency); extend the table if other scripts need it.
+func Slugify(s string) string {
+	s = accents.Replace(strings.ToLower(s))
+	s = strings.Trim(slugRE.ReplaceAllString(s, "-"), "-")
+	if s == "" {
+		return "untitled"
+	}
+	return s
+}
+
+var slugRE = regexp.MustCompile(`[^\p{L}\p{M}\p{N}]+`)
+
+// WikiLinks returns the slugified [[target]] and [[target|label]] targets in a note body,
 // skipping fenced code blocks and inline code spans.
+// shortcut: indented (4-space) code blocks are not skipped, since list continuations look the same; use a markdown parser if that bites.
 // shortcut: fences close on any line starting with the same fence, spans must sit on one line; use a markdown parser if that bites.
 func WikiLinks(src string) []string {
 	var out []string
@@ -92,8 +111,8 @@ func WikiLinks(src string) []string {
 			continue
 		}
 		for _, m := range wikiRE.FindAllStringSubmatch(inlineRE.ReplaceAllString(line, ""), -1) {
-			if s := strings.ToLower(strings.TrimSpace(m[1])); s != "" {
-				out = append(out, s)
+			if strings.TrimSpace(m[1]) != "" {
+				out = append(out, Slugify(m[1]))
 			}
 		}
 	}

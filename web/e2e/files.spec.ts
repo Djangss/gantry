@@ -142,8 +142,8 @@ test("wiki links open the note or start creating it, and backlinks are listed", 
   await page.goto(notePage);
   const preview = page.locator("article");
   await expect(preview.getByRole("link", { name: "architecture-notes" })).toHaveAttribute("href", /path=notes%2Fdeep%2Farchitecture-notes\.md/);
-  await expect(preview.getByRole("link", { name: "a future note" })).toHaveAttribute("href", /new=note&name=not%20yet/);
+  await expect(preview.getByRole("link", { name: "a future note" })).toHaveAttribute("href", /new=note&name=Not%20Yet/);
   await expect(preview.getByRole("region", { name: "Backlinks" }).getByRole("link", { name: "Architecture" })).toBeVisible();
   await preview.getByRole("link", { name: "a future note" }).click();
-  await expect(page.getByPlaceholder("Note title")).toHaveValue("not yet");
+  await expect(page.getByPlaceholder("Note title")).toHaveValue("Not Yet");
 });

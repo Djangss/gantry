@@ -21,9 +21,21 @@ test("known slug links to the note, label overrides text, case ignored", () => {
 
 test("unknown slug links to creating the note", () => {
   const [l] = run("[[Brand New]]");
-  expect(l.url).toBe("/files/o/n?new=note&name=brand%20new");
+  expect(l.url).toBe("/files/o/n?new=note&name=Brand%20New");
 });
 
 test("text without wiki links is untouched", () => {
   expect(run("plain [x] text")).toHaveLength(1);
+});
+
+test("spaced target resolves to the slugified file name, as create writes it", () => {
+  const tree = { type: "root", children: [{ type: "paragraph", children: [{ type: "text", value: "[[Not Yet]]" }] }] };
+  remarkWiki("o/n", [{ path: "notes/not-yet.md", title: "Not Yet", kind: "note" }])()(tree);
+  expect((tree.children[0].children[0] as unknown as { url: string }).url).toBe("/files/o/n?path=notes%2Fnot-yet.md");
+});
+
+test("unknown link keeps the current path", () => {
+  const tree = { type: "root", children: [{ type: "paragraph", children: [{ type: "text", value: "[[Zed]]" }] }] };
+  remarkWiki("o/n", [], "notes/a.md")()(tree);
+  expect((tree.children[0].children[0] as unknown as { url: string }).url).toBe("/files/o/n?path=notes%2Fa.md&new=note&name=Zed");
 });

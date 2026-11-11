@@ -234,3 +234,12 @@ func TestBacklinksAndNotes(t *testing.T) {
 		t.Errorf("notes %v", got)
 	}
 }
+
+func TestBacklinksSpacedTarget(t *testing.T) {
+	src := &fakeSource{files: map[string]string{"notes/a.md": "see [[Not Yet]]", "notes/not-yet.md": "x"}}
+	x := New(src, "o", "r")
+	got, err := x.Backlinks(context.Background(), "t", "not-yet")
+	if err != nil || len(got) != 1 || got[0].Path != "notes/a.md" {
+		t.Fatalf("got %v %v", got, err)
+	}
+}
