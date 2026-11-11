@@ -22,24 +22,7 @@ func (c *Client) Proposed(ctx context.Context, token, login string) ([]IssueSumm
 	if err != nil {
 		return nil, err
 	}
-	out := []IssueSummary{}
-	for _, kind := range []string{"is:issue", "is:pr"} {
-		res, _, err := g.Search.Issues(ctx, kind+" is:open label:proposed author:"+login,
-			&github.SearchOptions{Sort: "updated", Order: "desc", ListOptions: github.ListOptions{PerPage: 100}})
-		if err != nil {
-			return nil, wrap(err)
-		}
-		for _, x := range res.Issues {
-			it := IssueSummary{Number: x.GetNumber(), Repo: repoFromURL(x.GetRepositoryURL()), Title: x.GetTitle(), State: x.GetState(),
-				URL: x.GetHTMLURL(), User: x.GetUser().GetLogin(), Labels: []Label{}, IsPR: x.IsPullRequest(), IsDraft: x.GetDraft(),
-				Comments: x.GetComments(), UpdatedAt: x.GetUpdatedAt().Time}
-			for _, l := range x.Labels {
-				it.Labels = append(it.Labels, Label{Name: l.GetName(), Color: l.GetColor()})
-			}
-			out = append(out, it)
-		}
-	}
-	return out, nil
+	return searchKinds(ctx, g, "is:open label:proposed author:"+login, 100)
 }
 
 // repoFromURL turns ".../repos/owner/repo" into "owner/repo".
