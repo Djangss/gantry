@@ -38,6 +38,7 @@ type Index struct {
 type indexed struct {
 	entry Entry
 	refs  []string // lower-cased
+	wiki  []string // slugified [[target]]s
 	sha   string   // blob SHA the entry was parsed from
 	text  string   // lower-cased searchable text, capped at maxText bytes
 }
@@ -59,10 +60,11 @@ func kind(path string) string {
 func parse(path, sha, content string) indexed {
 	k := kind(path)
 	var title string
-	var refs []string
+	var refs, wiki []string
 	text := content
 	if k == "note" {
 		title, refs = ParseNote(content)
+		wiki = WikiLinks(content)
 	} else {
 		refs = ParseDrawing(content)
 		text = drawingText(content)
@@ -74,7 +76,7 @@ func parse(path, sha, content string) indexed {
 	for i, r := range refs {
 		lower[i] = strings.ToLower(r)
 	}
-	return indexed{entry: Entry{Path: path, Title: title, Kind: k}, refs: lower, sha: sha, text: strings.ToLower(text[:min(len(text), maxText)])}
+	return indexed{entry: Entry{Path: path, Title: title, Kind: k}, refs: lower, wiki: wiki, sha: sha, text: strings.ToLower(text[:min(len(text), maxText)])}
 }
 
 func (x *Index) Rebuild(ctx context.Context, token string) error {
@@ -158,21 +160,37 @@ func (x *Index) ensure(ctx context.Context, token string) error {
 	return x.scan(ctx, token)
 }
 
-func (x *Index) Lookup(ctx context.Context, token, ref string) ([]Entry, error) {
+// find returns the entries accepted by match, sorted by path.
+func (x *Index) find(ctx context.Context, token string, match func(indexed) bool) ([]Entry, error) {
 	if err := x.ensure(ctx, token); err != nil {
 		return nil, err
 	}
-	ref = strings.ToLower(ref)
 	out := []Entry{}
 	x.mu.Lock()
 	for _, f := range x.files {
-		if slices.Contains(f.refs, ref) {
+		if match(f) {
 			out = append(out, f.entry)
 		}
 	}
 	x.mu.Unlock()
 	slices.SortFunc(out, func(a, b Entry) int { return strings.Compare(a.Path, b.Path) })
 	return out, nil
+}
+
+func (x *Index) Lookup(ctx context.Context, token, ref string) ([]Entry, error) {
+	ref = strings.ToLower(ref)
+	return x.find(ctx, token, func(f indexed) bool { return slices.Contains(f.refs, ref) })
+}
+
+// Backlinks lists the notes whose body links to [[slug]].
+func (x *Index) Backlinks(ctx context.Context, token, slug string) ([]Entry, error) {
+	slug = Slugify(slug)
+	return x.find(ctx, token, func(f indexed) bool { return slices.Contains(f.wiki, slug) })
+}
+
+// Notes lists every note, so the preview can resolve [[slug]] to a path.
+func (x *Index) Notes(ctx context.Context, token string) ([]Entry, error) {
+	return x.find(ctx, token, func(f indexed) bool { return f.entry.Kind == "note" })
 }
 
 // Invalidate makes the next Lookup rescan, e.g. after a push to the notes repo from elsewhere.

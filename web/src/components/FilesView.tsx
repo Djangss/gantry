@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { FileText, PenTool } from "lucide-react";
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useParams, useSearchParams } from "react-router";
 import { api, errorText, send } from "@/api";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -64,15 +64,16 @@ export default function FilesView() {
   }
 
   // The item drawer links here with ?new=note|drawing&link=owner/repo#n.
-  const started = useRef(false);
   useEffect(() => {
     const kind = params.get("new");
-    if (started.current || !isNotes || (kind !== "note" && kind !== "drawing")) return;
-    started.current = true;
+    if (!isNotes || (kind !== "note" && kind !== "drawing")) return;
     const link = params.get("link") ?? undefined;
-    setParams(root ? { root } : {});
+    const next = new URLSearchParams(params); // keep root and path; replace so Back does not reopen the dialog
+    for (const k of ["new", "name", "link"]) next.delete(k);
+    setParams(next, { replace: true });
+    setName(params.get("name") ?? "");
     startCreate(kind, link);
-  }, [isNotes]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isNotes, params.get("new")]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function rescan() {
     try {

@@ -136,3 +136,14 @@ test("a live event refetches the board", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Write spec", exact: true })).toBeVisible();
   await expect.poll(() => boardLoads).toBeGreaterThanOrEqual(2);
 });
+
+test("wiki links open the note or start creating it, and backlinks are listed", async ({ page }) => {
+  await mockApi(page);
+  await page.goto(notePage);
+  const preview = page.locator("article");
+  await expect(preview.getByRole("link", { name: "architecture-notes" })).toHaveAttribute("href", /path=notes%2Fdeep%2Farchitecture-notes\.md/);
+  await expect(preview.getByRole("link", { name: "a future note" })).toHaveAttribute("href", /new=note&name=Not%20Yet/);
+  await expect(preview.getByRole("region", { name: "Backlinks" }).getByRole("link", { name: "Architecture" })).toBeVisible();
+  await preview.getByRole("link", { name: "a future note" }).click();
+  await expect(page.getByPlaceholder("Note title")).toHaveValue("Not Yet");
+});

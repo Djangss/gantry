@@ -20,7 +20,7 @@ const issue = {
   pr: { merged: false, draft: false, reviews: [{ user: "reviewer", state: "APPROVED" }], checks: [{ name: "ci", status: "completed", conclusion: "success" }] },
 };
 
-const note = "---\ntitle: Board UX ideas\nlinks: [Djangss/gantry#7]\n---\n\n# Board UX ideas\n\n- Compact cards\n- Keyboard moves\n";
+const note = "---\ntitle: Board UX ideas\nlinks: [Djangss/gantry#7]\n---\n\n# Board UX ideas\n\n- Compact cards\n- Keyboard moves\n\nSee [[architecture-notes]] and [[Not Yet|a future note]].\n";
 
 const repoIssues = [
   { number: 9, title: "Search across notes", state: "open", url: "https://github.com/Djangss/gantry/issues/9", user: "Djangss", labels: [{ name: "idea", color: "a2eeef" }], isPR: false, isDraft: false, comments: 1, updatedAt: "2026-11-10T09:00:00Z" },
@@ -128,6 +128,12 @@ export async function mockApi(page: Page) {
       if (q !== "kanban") return json({ notes: [], issues: [] });
       return json({ notes: [{ path: "notes/board-ux-ideas.md", title: "Board UX ideas", kind: "note" }], issues: [{ ...repoIssues[1], repo: "Djangss/gantry" }] });
     }
+    if (p === "/api/notes")
+      return json([
+        { path: "notes/board-ux-ideas.md", title: "Board UX ideas", kind: "note" },
+        { path: "notes/deep/architecture-notes.md", title: "Architecture", kind: "note" },
+      ]);
+    if (p === "/api/backlinks") return json([{ path: "notes/deep/architecture-notes.md", title: "Architecture", kind: "note" }]);
     if (p === "/api/links") return json([{ path: "notes/board-ux-ideas.md", title: "Board UX ideas", kind: "note" }]);
     if (p === "/api/repos/Djangss/notes/tree") return json([{ path: "notes/board-ux-ideas.md", type: "blob" }, { path: "drawings/architecture.excalidraw", type: "blob" }]);
     if (p === "/api/repos/Djangss/notes/contents/notes/board-ux-ideas.md") return json({ content: note, sha: "s1" });
