@@ -39,12 +39,12 @@ func TestProposedRunsIssueAndPRQueries(t *testing.T) {
 }
 
 func TestItemNode(t *testing.T) {
-	c := fake(t, map[string]http.HandlerFunc{"GET /repos/o/r/issues/4": body(`{"number":4,"node_id":"I_x","pull_request":{"url":"u"},"labels":[{"name":"proposed"}]}`)})
-	id, isPR, has, err := c.ItemNode(ctx, "tok", "o", "r", 4, "proposed")
-	if err != nil || id != "I_x" || !isPR || !has {
-		t.Fatalf("%q %v %v %v", id, isPR, has, err)
+	c := fake(t, map[string]http.HandlerFunc{"GET /repos/o/r/issues/4": body(`{"number":4,"node_id":"I_x","pull_request":{"url":"u"},"draft":true,"labels":[{"name":"proposed"}]}`)})
+	id, isPR, draft, has, err := c.ItemNode(ctx, "tok", "o", "r", 4, "proposed")
+	if err != nil || id != "I_x" || !isPR || !draft || !has {
+		t.Fatalf("%q %v %v %v %v", id, isPR, draft, has, err)
 	}
-	if _, _, has, _ := c.ItemNode(ctx, "tok", "o", "r", 4, "other"); has {
+	if _, _, _, has, _ := c.ItemNode(ctx, "tok", "o", "r", 4, "other"); has {
 		t.Fatal("other label reported present")
 	}
 }
