@@ -37,3 +37,10 @@ func TestValidRef(t *testing.T) {
 		}
 	}
 }
+
+func TestWikiLinks(t *testing.T) {
+	src := "see [[Ideas]] and [[plan|the plan]] [[ spaced ]]\n`[[inline]]` x\n```\n[[fenced]]\n```\n~~~\n[[tilde]]\n~~~\n[[after]] [[]]"
+	if got := fmt.Sprint(WikiLinks(src)); got != "[ideas plan spaced after]" {
+		t.Errorf("got %s", got)
+	}
+}

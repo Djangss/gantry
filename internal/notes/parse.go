@@ -66,3 +66,36 @@ func ParseDrawing(src string) []string {
 	}
 	return d.Links
 }
+
+var (
+	wikiRE   = regexp.MustCompile(`\[\[([^\[\]|]+)(?:\|[^\[\]]*)?\]\]`)
+	inlineRE = regexp.MustCompile("`[^`\n]*`")
+)
+
+// WikiLinks returns the lower-cased [[slug]] and [[slug|label]] targets in a note body,
+// skipping fenced code blocks and inline code spans.
+// shortcut: fences close on any line starting with the same fence, spans must sit on one line; use a markdown parser if that bites.
+func WikiLinks(src string) []string {
+	var out []string
+	var fence string
+	for _, line := range strings.Split(strings.ReplaceAll(src, "\r\n", "\n"), "\n") {
+		t := strings.TrimLeft(line, " ")
+		if f := t[:min(3, len(t))]; f == "```" || f == "~~~" {
+			if fence == "" {
+				fence = f
+			} else if fence == f {
+				fence = ""
+			}
+			continue
+		}
+		if fence != "" {
+			continue
+		}
+		for _, m := range wikiRE.FindAllStringSubmatch(inlineRE.ReplaceAllString(line, ""), -1) {
+			if s := strings.ToLower(strings.TrimSpace(m[1])); s != "" {
+				out = append(out, s)
+			}
+		}
+	}
+	return out
+}

@@ -160,6 +160,21 @@ func (s *Server) linksFor(w http.ResponseWriter, r *http.Request) {
 	s.reply(w, out, err)
 }
 
+func (s *Server) backlinks(w http.ResponseWriter, r *http.Request) {
+	slug := r.URL.Query().Get("slug")
+	if slug == "" {
+		badRequest(w, "slug is required")
+		return
+	}
+	out, err := s.links.Backlinks(r.Context(), token(r), slug)
+	s.reply(w, out, err)
+}
+
+func (s *Server) noteList(w http.ResponseWriter, r *http.Request) {
+	out, err := s.links.Notes(r.Context(), token(r))
+	s.reply(w, out, err)
+}
+
 func (s *Server) rescan(w http.ResponseWriter, r *http.Request) {
 	if err := s.links.Rebuild(r.Context(), token(r)); err != nil {
 		s.fail(w, err)

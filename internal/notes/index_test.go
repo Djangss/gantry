@@ -211,3 +211,26 @@ func TestRebuildWithConcurrentUpdate(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestBacklinksAndNotes(t *testing.T) {
+	src := &fakeSource{files: map[string]string{
+		"notes/a.md":     "see [[Target]]",
+		"notes/sub/b.md": "[[target|label]] and `[[target2]]`",
+		"notes/c.md":     "nothing",
+	}}
+	x := New(src, "o", "r")
+	got, err := x.Backlinks(context.Background(), "t", "TARGET")
+	if err != nil || len(got) != 2 || got[0].Path != "notes/a.md" || got[1].Path != "notes/sub/b.md" {
+		t.Fatalf("backlinks %v %v", got, err)
+	}
+	if got, _ := x.Backlinks(context.Background(), "t", "target2"); len(got) != 0 {
+		t.Errorf("code span link indexed: %v", got)
+	}
+	x.Update("notes/c.md", "new", "now [[target]]")
+	if got, _ := x.Backlinks(context.Background(), "t", "target"); len(got) != 3 {
+		t.Errorf("update not reflected: %v", got)
+	}
+	if got, _ := x.Notes(context.Background(), "t"); len(got) != 3 {
+		t.Errorf("notes %v", got)
+	}
+}
